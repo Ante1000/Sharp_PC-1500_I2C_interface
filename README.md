@@ -1,6 +1,6 @@
 # I2C interface for Sharp PC-1500(A)
 
-**I2C master v1.0 and v1.1** by Alex F4VTS
+**I2C master v1.0, v1.1 and v1.2** by Alex F4VTS
 
 A machine-language routine that turns the PC-1500(A) into an **I2C bus master** without a
 dedicated interface and without any modification of the computer: **SCL on PC7** (pin 10) and
@@ -16,8 +16,9 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 > 1–29 random bytes **without a single error**. Further tests (DS3231, PCF8574, EEPROM) are
 > still to be done.
 >
-> **I2C v1.1** (see [below](#version-11-faster)) does the same about 1.2–1.5 times faster. It
-> passes all simulator tests but has **not yet run on a real PC-1500**. Please check the wiring
+> **I2C v1.1 and v1.2** (see [below](#version-11-faster)) do the same faster: v1.2 writes about
+> 1.6 times and reads about 1.2 times as fast as v1.0. They pass all simulator tests but have
+> **not yet run on a real PC-1500**. Please check the wiring
 > carefully and report your results.
 
 | Document | Contents |
@@ -35,8 +36,10 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 |---|---|
 | `Basic/pc1500_i2c_installer-v1.0.txt` | BASIC installer of the I2C master, with a bus scanner and a read/write test |
 | `Basic/pc1500_i2c_installer-v1.1.txt` | the same for the faster I2C v1.1 (same use, same scanner and test) |
+| `Basic/pc1500_i2c_installer-v1.2.txt` | the same for I2C v1.2, the fastest version (same use) |
+| `Basic/pc1500_lh5801_flag_test.txt` | small test: do SHL and ROL set the Z flag on a real LH5801? (decides a further optimization) |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program for the Arduino UNO tester (menu, prompts in Polish) |
-| `asm/` | LH5801 assembler sources and listings of I2C v1.0 and v1.1 |
+| `asm/` | LH5801 assembler sources and listings of I2C v1.0, v1.1 and v1.2 |
 | `arduino/PC1500_I2C_Slave/` | Arduino UNO sketch: I2C device at &42 with LCD, buttons, ADC and speed measurement |
 | `arduino/LCD_Keypad_Test/` | Arduino UNO sketch that tests the LCD Keypad Shield by itself |
 | `docs/` | Arduino tester description and design notes |
@@ -52,7 +55,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
   to 10 SCL pulses free the bus before the transaction starts.
 - SCL clock about 10 kHz (measured on a PC-1500: 9.4 kHz on average over a 32-byte write;
   single clock periods vary between about 60 and 200 µs). I2C has no minimum clock frequency.
-- 241 bytes of code (v1.1: 252 bytes). It uses the same TX/RX buffers as the Software UART, so both can be
+- 241 bytes of code (v1.1: 252 bytes, v1.2: 251 bytes). It uses the same TX/RX buffers as the Software UART, so both can be
   installed together but can not operate simultaneously. The UART is not needed for I2C, they are both independent routines.
 
 ## Limitations
@@ -149,8 +152,8 @@ either a UART device or an I2C bus at a time.
 1. Select PRO mode and enter `NEW0` [ENTER], then the `NEW` value from the table above
    (`NEW &4500` on a PC-1500A).
 2. Type in `Basic/pc1500_i2c_installer-v1.0.txt` or, for the faster version,
-   `Basic/pc1500_i2c_installer-v1.1.txt` (there is no tape recording yet) and `RUN` it in RUN
-   mode. Both versions are used in the same way.
+   `Basic/pc1500_i2c_installer-v1.1.txt` / `-v1.2.txt` (there is no tape recording yet) and
+   `RUN` it in RUN mode. All versions are used in the same way.
 3. The installer asks for the SDA port: ENTER = PB2 (pin 27), `0` = PB0 (pin 9). It then shows
    the addresses and offers the bus scanner.
 4. When you no longer need the installer, enter `NEW` in PRO mode. The code stays in memory.
@@ -246,18 +249,19 @@ a complete example.
 Times from the simulator, increased by the 5 % measured on a real PC-1500, without the time
 BASIC needs for the `CALL` statement itself:
 
-| Transaction | v1.0 | v1.1 |
-|---|---|---|
-| presence test (W=0, R=0) | 1.3 ms | 1.0 ms |
-| write one register (W=2) | 3.4 ms | 2.2 ms |
-| read 7 registers (W=1, R=7) | 8.4 ms | 6.6 ms |
-| write 255 bytes | 0.23 s | 0.16 s |
-| read 255 bytes | 0.18 s | 0.16 s |
+| Transaction | v1.0 | v1.1 | v1.2 |
+|---|---|---|---|
+| presence test (W=0, R=0) | 1.3 ms | 1.0 ms | 1.0 ms |
+| write one register (W=2) | 3.4 ms | 2.2 ms | 1.9 ms |
+| read 7 registers (W=1, R=7) | 8.4 ms | 6.6 ms | 6.4 ms |
+| write 255 bytes | 0.23 s | 0.16 s | 0.14 s |
+| read 255 bytes | 0.18 s | 0.16 s | 0.16 s |
 
 With v1.0 this is about 1.1 KB/s when writing and 1.4 KB/s when reading; v1.1 reaches about
-1.6 KB/s in both directions. With 32-byte writes (Arduino tester) a real PC-1500 measured
-1011 bytes/s with v1.0, as the address byte and START/STOP count more; for v1.1 the simulator
-expects about 1530 bytes/s and 14.2 kHz in the same test.
+1.6 KB/s in both directions, v1.2 about 1.8 KB/s when writing. With 32-byte writes (Arduino
+tester) a real PC-1500 measured 1011 bytes/s and 9.4 kHz with v1.0, as the address byte and
+START/STOP count more; in the same test the simulator expects about 1530 bytes/s and 14.2 kHz
+for v1.1 and about 1820 bytes/s and 16.9 kHz for v1.2.
 
 ## Version 1.1: faster
 
@@ -288,6 +292,38 @@ RAM base, plus mutation tests (10 deliberate faults in the code, all detected). 
 on hardware is still to do: install v1.1 instead of v1.0 and run the Arduino tester (speed
 test about 14 kHz and 1500 B/s expected, echo test without errors).
 
+## Version 1.2: faster writing
+
+v1.2 is again a drop-in replacement (251 bytes, same page, parameters and use). Receiving is
+the same as in v1.1; sending is about 1.15 times faster than v1.1:
+
+- **The end-of-byte test only runs after a 1 bit.** The send loop marks the end of a byte with
+  a sentinel bit that is shifted out after the 8 data bits. That sentinel is a 1, so after a
+  0 bit the test (`BII A,&FF` and a branch, 15–18 cycles) cannot be true and is skipped.
+- **No subroutine call per byte.** SEND now sends the address and then all W bytes from the TX
+  buffer in one loop; the ACK no longer goes through the carry flag (`SEC`/`REC`), and the
+  read address simply ends the loop because UL already equals W.
+- **The "SDA low, bit 1" path falls straight into the clock code** instead of jumping to it.
+- After START the address byte starts in the "SDA low" state, so SDA is not released and
+  pulled low again.
+
+Per data bit the send loop now needs 51–80 cycles (about 66 on average; v1.1: about 77, v1.0:
+about 115). The windows for a microcontroller device stay comfortable: about 78 µs after each
+written byte, 75 µs after the read address and 51 µs after each received byte. v1.2 passes the
+same 11264 simulator transactions, and 13 deliberate faults in its code are all detected.
+
+What is left, and why it was not done:
+
+- **The receive loop is close to its limit:** two port writes for SCL (17 cycles each), one
+  read of SDA (14) and the shift. Unrolling it for 2 bits would save about 6 % but needs 13
+  bytes, and the page has 1 byte left.
+- **Port writes cannot be made cheaper here:** `STA #(Y)` takes 10 cycles instead of 17, but
+  only if A already holds the port value, and A holds the data byte.
+- **A possible v1.3:** if the real LH5801 sets the Z flag after `SHL`/`ROL` (MAME does; the
+  manual says shifts leave Z alone), the two `BII A,&FF` tests can go: about 4 % faster
+  sending and 4 more free bytes. `Basic/pc1500_lh5801_flag_test.txt` checks this on your
+  PC-1500 in a second: result 15 means yes, 0 means no.
+
 ## How it works
 
 - **SCL:** `ORI`/`ANI` on port C (&F008, bit 7) in the ME1 space, as SEROUT drives TX.
@@ -309,8 +345,8 @@ test about 14 kHz and 1500 B/s expected, echo test without errors).
 - The routine returns with C=1 and the result in X, so BASIC stores it in the variable of
   `CALL IC,E`, as SERIN does with the number of received characters.
 
-Sources: `asm/i2c_v1.0.asm` and `asm/i2c_v1.1.asm` (LH5801 assembler, comments in Polish) and
-the listings `asm/i2c_v1.0.lst` and `asm/i2c_v1.1.lst` (with the bytes of every instruction). Symbols that the installer fills in: IP (page
+Sources: `asm/i2c_v1.0.asm`, `asm/i2c_v1.1.asm` and `asm/i2c_v1.2.asm` (LH5801 assembler,
+comments in Polish) and the listings `asm/i2c_v1.x.lst` (with the bytes of every instruction). Symbols that the installer fills in: IP (page
 of the code), TP and RP (pages of the TX and RX buffers), BM and DB (bit mask of SDA in port B).
 
 ## Author

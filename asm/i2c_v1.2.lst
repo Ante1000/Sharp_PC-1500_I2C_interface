@@ -1,0 +1,187 @@
+; I2C v1.2 - listing (adresy wzgledem IC = RAM+&400), 251 bajtow
+;
+                    ; =====================================================================
+                    ; I2C v1.2 - programowy master I2C dla Sharp PC-1500(A), najszybsza wersja
+                    ; SCL = PC7 (pin 10, &F008 bit 7), SDA = PB2 (CMT-IN, pin 27) albo PB0
+                    ; (pin 9) - wybor w instalatorze. CPU LH5801 @ 1,3 MHz.
+                    ;
+                    ; Wywolanie, parametry, wyniki i pamiec bez zmian wzgledem v1.0:
+                    ;   POKE IA, D, W, R : CALL IC   albo   CALL IC,E   (E = wynik)
+                    ;   IC = RAM+&400, IA = RAM+&4FC (D, W, R), IS = RAM+&4FF (wynik),
+                    ;   TX = RAM+&300, RX = RAM+&200.
+                    ;   Wynik: 0 = OK, 1 = brak ACK po adresie, 2 = brak ACK po bajcie
+                    ;   danych, 3 = SDA stale w stanie niskim (transakcja nie zaczeta).
+                    ;
+                    ; Z v1.1 (czasy z tablicy cykli MAME):
+                    ; 1. Bit 0 przy nadawaniu to sam rozkaz ORI #(X),BM (SDA = wyjscie),
+                    ;    bez zerowania zatrzasku OPB i bez SJP/RTN. Zatrzask SDA ma zawsze
+                    ;    wartosc 0, gdy SEND zaczyna bajt: po STARCIE zeruje go SDA0, a po
+                    ;    bajcie danych odczyt ACK (SDA = 0) wpisuje 0 do zatrzasku w modelu
+                    ;    MAME; w modelu prawdziwego zatrzasku 0 zostaje po SDA0. Przy NACK
+                    ;    nastepny jest STOP, ktory zatrzask zeruje sam.
+                    ; 2. Petla nadawania ma dwa stany: H (SDA = 1) i L (SDA = 0). SDA zmienia
+                    ;    sie tylko wtedy, gdy bit rozni sie od poprzedniego, a bajt konczacy
+                    ;    sie bitem 1 nie musi juz zwalniac SDA przed ACK.
+                    ; 3. Odbior: X wskazuje na OPB (&F00F), wiec odczyt SDA to BII #(X),BM
+                    ;    (14 cykli zamiast 20). Bit 0 nie potrzebuje REC: w petli C = 0, bo
+                    ;    znacznik wychodzi do C dopiero po 8. bicie. ACK odbiornika uzywa
+                    ;    adresow bezwzglednych &F00D, bez przelaczania X.
+                    ; 4. Adres (zapis i odczyt) wysyla jedna procedura ADDR, ktora przechodzi
+                    ;    prosto w SEND. START zawiera kod SDA0 (bez SJP/RTN), a STOP wywoluje
+                    ;    SDA0 wewnatrz START.
+                    ; Nowe w v1.2 (nadawanie ok. 1,15 raza szybsze niz w v1.1):
+                    ; 5. Test konca bajtu (znacznik, A = 0) tylko po bicie 1: znacznik jest
+                    ;    jedynka, wiec po bicie 0 (C = 0) nie moze to byc koniec.
+                    ; 6. SEND wysyla adres i wszystkie W bajtow z TX w jednej petli, bez
+                    ;    SJP/RTN na bajt; ACK bez SEC/REC. Adres do odczytu konczy petle od
+                    ;    razu, bo UL = W (FREE zeruje UL, a po zapisie UL = W).
+                    ; 7. Sciezka "stan L, bit 1" przechodzi wprost do taktu SCL stanu H.
+                    ; 8. Po STARCIE adres zaczyna sie w stanie L (SDA juz = 0).
+                    ; Po adresie do odczytu SCL zostaje w stanie niskim ok. 75 us, zeby
+                    ; urzadzenie (np. Arduino) zdazylo przygotowac dane.
+                    ;
+                    ; Linie (jak w v1.0):
+                    ;   SCL: port C ma tylko wyjscia, PC7 steruje SCL push-pull, bez
+                    ;        "clock stretching".
+                    ;   SDA: open-drain udawany rejestrem kierunku DDB (&F00D):
+                    ;        SDA = 1: bit DDB = 0 (wejscie), stan wysoki daje rezystor;
+                    ;        SDA = 0: bit DDB = 1 (wyjscie) przy zatrzasku OPB = 0.
+                    ; Kazda zmiana linii to osobny rozkaz ORI/ANI (>= 17 cykli = 13 us), wiec
+                    ; minimalne czasy I2C (4,7 us) sa zachowane bez petli opozniajacych.
+                    ;
+                    ; Rejestry: X = &F00D (DDB), w odbiorze &F00F (OPB); Y = &F008 (port C);
+                    ; U = wskaznik bufora; A = dane. Licznik bitow: znacznik (sentinel).
+                    ; Z po SHL sprawdzamy przez BII A,&FF, bo wedlug instrukcji LH5801 rozkazy
+                    ; przesuniec nie ustawiaja flagi Z.
+                    ;
+                    ; Adres ladowania: IC = RAM+&400 (&4400 na PC-1500A), za kodem parametry
+                    ; D, W, R i wynik (IA = RAM+&4FC .. IS = RAM+&4FF).
+                    ; Symbole wstawiane przez BASIC: IP = strona kodu (adresy SJP i
+                    ; parametrow), TP/RP = strony buforow TX/RX, BM = maska bitu SDA w
+                    ; porcie B (4 = PB2, 1 = PB0), DB = 255-BM.
+                    ; =====================================================================
+00  FD BE                   RIE                     ; bez przerwan
+02  48 F0                   LDI  XH,&F0
+04  4A 0D                   LDI  XL,&0D             ; X = &F00D (DDB: kierunek SDA)
+06  58 F0                   LDI  YH,&F0
+08  5A 08                   LDI  YL,&08             ; Y = &F008 (port C: SCL = PC7)
+0A  FD 49 DB                ANI  #(X),DB            ; SDA = 1 (zwolnione)
+0D  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+10  6A 09                   LDI  UL,9               ; SDA = 0: do 10 impulsow SCL
+12  FD ED F0 0F BM  BUSY:   BII  #(&F00F),BM        ; SDA = 1 -> magistrala wolna
+17  89 0C                   BZR+ FREE
+19  FD 59 7F                ANI  #(Y),&7F           ; impuls SCL: urzadzenie, ktore
+1C  FD 5B 80                ORI  #(Y),&80           ; trzyma SDA, wysyla kolejny bit
+1F  88 0F                   LOP  UL,BUSY
+21  B5 03                   LDI  A,3                ; SDA nadal 0: wynik 3, bez START/STOP
+23  8E 6F                   BCH+ EXIT
+25  6A 00           FREE:   LDI  UL,0               ; UL = 0 (= W przy odczycie bez zapisu)
+27  A5 IP FD                LDA  (IP,&FD)           ; W
+2A  89 05                   BZR+ WR
+2C  A5 IP FE                LDA  (IP,&FE)           ; R
+2F  89 12                   BZR+ RD                 ; W = 0, R > 0: od razu odczyt
+31  68 TP           WR:     LDI  UH,TP              ; U = TX
+33  F9                      REC                     ; C = 0: adres do zapisu
+34  BE IP AE                SJP  ADDR               ; adres, potem W bajtow z TX
+37  83 05                   BCS+ WEND               ; C = 1: wszystko potwierdzone
+39  24                      LDA  UL                 ; brak ACK: UL = 0 -> po adresie
+3A  8B 49                   BZS+ NAKA
+3C  8E 4B                   BCH+ NAKD
+3E  A5 IP FE        WEND:   LDA  (IP,&FE)           ; R
+41  8B 3E                   BZS+ OK
+43  FB              RD:     SEC                     ; C = 1: adres do odczytu (UL = W, wiec SEND
+44  BE IP AE                SJP  ADDR               ; konczy po samym adresie)
+47  81 3C                   BCR+ NAKA
+49  F9                      REC                     ; C = 0: petla odbioru tego wymaga
+4A  68 RP                   LDI  UH,RP
+4C  6A 00                   LDI  UL,0               ; U = RX
+4E  4A 0F                   LDI  XL,&0F             ; X = &F00F (OPB: odczyt SDA)
+50  B5 01           RBYTE:  LDI  A,1                ; znacznik: po 8 bitach wyjdzie do C
+52  FD 5B 80        RBIT:   ORI  #(Y),&80           ; SCL = 1
+55  FD 4D BM                BII  #(X),BM            ; odczyt SDA
+58  8B 01                   BZS+ R0
+5A  FB                      SEC                     ; bit 1 (w petli C = 0, wiec bit 0 bez REC)
+5B  DB              R0:     ROL                     ; A = A*2 + bit
+5C  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+5F  91 0F                   BCR- RBIT               ; C = 1: znacznik wyszedl, bajt gotowy
+61  61                      SIN  U                  ; zapisz, U++
+62  24                      LDA  UL
+63  A7 IP FE                CPA  (IP,&FE)           ; C = 1: to byl ostatni (R-ty) bajt
+66  83 08                   BCS+ R9                 ; ostatni: NACK (SDA = 1)
+68  FD EB F0 0D BM          ORI  #(&F00D),BM        ; ACK: SDA = wyjscie ...
+6D  FD 49 DB                ANI  #(X),DB            ; ... zatrzask OPB = 0
+70  FD 5B 80        R9:     ORI  #(Y),&80           ; 9. impuls SCL (ACK albo NACK)
+73  FD 59 7F                ANI  #(Y),&7F           ; (ORI/ANI nie zmieniaja C)
+76  83 07                   BCS+ RDONE
+78  FD E9 F0 0D DB          ANI  #(&F00D),DB        ; zwolnij SDA; C = 0
+7D  9E 2F                   BCH- RBYTE
+7F  4A 0D           RDONE:  LDI  XL,&0D             ; X = DDB
+81  B5 00           OK:     LDI  A,0
+83  8E 06                   BCH+ STOP
+85  B5 01           NAKA:   LDI  A,1
+87  8E 02                   BCH+ STOP
+89  B5 02           NAKD:   LDI  A,2
+8B  BE IP A2        STOP:   SJP  SDA0               ; SDA = 0 przy SCL = 0
+8E  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+91  FD 49 DB                ANI  #(X),DB            ; SDA 0 -> 1 przy SCL = 1: STOP
+94  AE IP FF        EXIT:   STA  (IP,&FF)           ; IS = wynik
+97  0A                      STA  XL
+98  48 00                   LDI  XH,0               ; X = wynik ...
+9A  FB                      SEC                     ; ... C=1: BASIC wpisze X do zmiennej z CALL IC,E
+9B  9A                      RTN
+                    ;
+                    ; START: SDA 1 -> 0 przy SCL = 1, potem SCL = 0 (A i C bez zmian).
+                    ; SDA0 (wejscie z STOP przy SCL = 0): SDA = 0 (wyjscie, zatrzask 0), a
+                    ; powtorne SCL = 0 niczego wtedy nie zmienia.
+9C  FD 49 DB        START:  ANI  #(X),DB            ; SDA = 1
+9F  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+A2  FD 4B BM        SDA0:   ORI  #(X),BM            ; SDA = wyjscie ...
+A5  FD E9 F0 0F DB          ANI  #(&F00F),DB        ; ... zatrzask OPB = 0: SDA 1 -> 0 (START)
+AA  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+AD  9A                      RTN
+                    ;
+                    ; ADDR: START (albo powtorzony START), potem bajt D*2+C i dalsze bajty z TX.
+                    ; Po STARCIE SDA = 0, wiec nadawanie zaczyna sie w stanie L.
+AE  BE IP 9C        ADDR:   SJP  START
+B1  A5 IP FC                LDA  (IP,&FC)           ; D
+B4  DB                      ROL                     ; D*2 + C (0 zapis, 1 odczyt)
+B5  FB                      SEC
+B6  DB                      ROL                     ; C = bit 7, znacznik 1 -> bit 0
+B7  8E 0A                   BCH+ LDEC
+                    ;
+                    ; SEND: nadaje bajt z A, potem kolejne bajty z TX (LIN U), az UL = W.
+                    ; Wynik: C = 1 wszystko potwierdzone, C = 0 brak ACK (UL mowi, po ktorym).
+                    ; Dwa stany: H (SDA = 1) i L (SDA = 0); SDA zmienia tylko bit inny niz
+                    ; poprzedni. Test konca bajtu (znacznik: A = 0) tylko przy bicie 1 - przy
+                    ; bicie 0 (C = 0) to nie moze byc znacznik. Zatrzask SDA = 0 (patrz v1.1),
+                    ; wiec SDA = 0 to tylko SDA = wyjscie.
+B9  FD 4B BM        H0:     ORI  #(X),BM            ; H, bit 0: SDA = 0 -> stan L
+BC  FD 5B 80        LC:     ORI  #(Y),&80           ; impuls SCL
+BF  FD 59 7F                ANI  #(Y),&7F
+C2  D9                      SHL                     ; C = nastepny bit
+C3  91 09           LDEC:   BCR- LC                 ; L, bit 0: SDA bez zmian
+C5  BF FF                   BII  A,&FF              ; C = 1: bit 1 albo znacznik (A = 0)?
+C7  8B 12                   BZS+ SACKL
+C9  FD 49 DB                ANI  #(X),DB            ; L, bit 1: SDA = 1 -> stan H
+CC  FD 5B 80        HC:     ORI  #(Y),&80           ; impuls SCL
+CF  FD 59 7F                ANI  #(Y),&7F
+D2  D9                      SHL
+D3  91 1C           HDEC:   BCR- H0                 ; H, bit 0
+D5  BF FF                   BII  A,&FF
+D7  99 0D                   BZR- HC                 ; H, bit 1: SDA bez zmian
+D9  8E 03                   BCH+ SACKH              ; znacznik w stanie H: SDA juz zwolnione
+DB  FD 49 DB        SACKL:  ANI  #(X),DB            ; zwolnij SDA: ACK nadaje urzadzenie
+DE  FD 5B 80        SACKH:  ORI  #(Y),&80           ; 9. impuls SCL
+E1  FD ED F0 0F BM          BII  #(&F00F),BM        ; ACK = 0 (odczyt zeruje zatrzask w modelu MAME)
+E6  89 0E                   BZR+ SNAK
+E8  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+EB  24                      LDA  UL
+EC  A7 IP FD                CPA  (IP,&FD)           ; wyslano W bajtow? (rowne: C = 1)
+EF  8B 09                   BZS+ SDONE
+F1  65                      LIN  U                  ; A = bajt, U++
+F2  FB                      SEC
+F3  DB                      ROL                     ; C = bit 7, znacznik 1 -> bit 0
+F4  9E 23                   BCH- HDEC               ; po ACK SDA jest zwolnione: stan H
+F6  FD 59 7F        SNAK:   ANI  #(Y),&7F           ; SCL = 0
+F9  F9                      REC                     ; C = 0: brak ACK
+FA  9A              SDONE:  RTN

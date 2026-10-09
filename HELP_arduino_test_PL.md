@@ -20,6 +20,7 @@ English description: [docs/arduino_tester.md](docs/arduino_tester.md).
 | pomiar prędkości (menu 6) na prawdziwym PC-1500 | **działa: SCL 9,397 kHz, 1011 B/s** (symulator przewidywał 9,871 kHz i 1062 B/s, czyli prawdziwy PC-1500 jest o około 5% wolniejszy) |
 | test ECHO (menu 5), 1000 prób | **0 błędów** |
 | to samo z szybszym I2C v1.1 | jeszcze nie sprawdzone; symulator przewiduje około 14,2 kHz i 1530 B/s |
+| to samo z najszybszym I2C v1.2 | jeszcze nie sprawdzone; symulator przewiduje około 16,9 kHz i 1820 B/s |
 
 ## Potrzebne części
 
@@ -76,10 +77,10 @@ opcjonalnie:  A5 ──[ 4,7k ]── 5V      A4 ──[ 4,7k ]── 5V
 1. **Wgraj szkic** `PC1500_I2C_Slave.ino` do UNO (Arduino IDE, płytka „Arduino Uno”). Na LCD
    pojawi się „I2C slave 0x42”. Jeśli ekran jest pusty, ustaw kontrast niebieskim
    potencjometrem na shieldzie.
-2. **Zainstaluj I2C v1.0 (albo szybszą v1.1) na PC-1500:**
+2. **Zainstaluj I2C v1.0 (albo szybszą v1.1 lub v1.2) na PC-1500:**
    - w trybie PRO wpisz `NEW0`, potem `NEW &4500` (PC-1500A; inne wartości są w tabeli w
      [README](README.md#memory));
-   - wpisz instalator `Basic/pc1500_i2c_installer-v1.0.txt` (albo `-v1.1.txt`) i uruchom go
+   - wpisz instalator `Basic/pc1500_i2c_installer-v1.0.txt` (albo `-v1.1.txt`, `-v1.2.txt`) i uruchom go
      `RUN`. Program testowy działa tak samo z obiema wersjami;
    - na pytanie o port SDA naciśnij ENTER (PB2).
 3. **Uruchom skaner instalatora** (`RUN 500`). Powinien znaleźć urządzenie pod **&42**.

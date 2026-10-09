@@ -165,6 +165,7 @@ the PC-1500 reads it (commands "request block n", "status", "read block"); the d
 |---|---|---|---|---|
 | I2C v1.0 (loops) | PC7, PB2 | 1.13 KB/s | 1.38 KB/s | 12–14 s |
 | I2C v1.1 (two-state send loop, faster receive; 255-byte transfers, v1.0 by the same measure: 1.18 / 1.46) | PC7, PB2 | 1.65 KB/s | 1.70 KB/s | about 10 s |
+| I2C v1.2 (end test only after 1 bits, one loop for all bytes; same measure) | PC7, PB2 | 1.90 KB/s | 1.70 KB/s | about 9–10 s |
 | I2C with unrolled loops (estimate, not measured) | PC7, PB2 | about 1.5–1.8 KB/s | about 1.7–1.8 KB/s | about 9–11 s |
 | SPI, classic (SCK = PC7, MOSI = PB0, MISO = PB2), loop | PC7, PB0, PB2 | 1.62 KB/s | 1.76 KB/s | about 10 s |
 | SPI, classic, unrolled | PC7, PB0, PB2 | 2.09 KB/s | 2.18 KB/s | about 7.5 s |
