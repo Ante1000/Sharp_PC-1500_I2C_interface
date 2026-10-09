@@ -20,6 +20,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 |---|---|
 | this file | features, connection, installation, use in BASIC, examples |
 | [docs/arduino_tester.md](docs/arduino_tester.md) | test set: Arduino UNO + LCD Keypad Shield as an I2C device, with a test program for the PC-1500 |
+| [HELP_arduino_test_PL.md](HELP_arduino_test_PL.md) | help for the test program `pc1500_i2c_arduino_test-v1.0`, in Polish: wiring, start, menu, error messages, protocol |
 | [docs/design_notes.md](docs/design_notes.md) | ideas for the next steps: ESP32 as Wi-Fi bridge and program "disk", I2C compared with SPI 3-wire and other 2-wire protocols, speed measurements in the simulator |
 | [Software UART: Modification_for_use_with_CE-150_EN.pdf](https://github.com/Ante1000/Sharp_PC-1500_Software_UART/blob/main/Modification_for_use_with_CE-150_EN.pdf) | optional modification for use with the CE-150 (needed only for SDA on PB0) |
 | [Software UART: HELP_NEW_memory.md](https://github.com/Ante1000/Sharp_PC-1500_Software_UART/blob/main/HELP_NEW_memory.md) | RAM start for every memory module |

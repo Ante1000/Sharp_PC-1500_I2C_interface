@@ -16,6 +16,7 @@ Arduino measure the real speed of the bus.
 | `arduino/LCD_Keypad_Test/LCD_Keypad_Test.ino` | stand-alone test of the shield: buttons, LCD, character set, backlight, RST |
 | `arduino/PC1500_I2C_Slave/PC1500_I2C_Slave.ino` | I2C device at &42 for the PC-1500 (comments in Polish) |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program with a menu (prompts in Polish) |
+| [`HELP_arduino_test_PL.md`](../HELP_arduino_test_PL.md) | help for the test program in Polish: wiring, start, menu, error messages, protocol |
 
 The UNO is a good tester because everything runs at 5 V (no level converters, and the short
 5 V pulses that PB2 may produce, see the README, do no harm), it has enough RAM (the slave sketch
