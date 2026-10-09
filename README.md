@@ -81,7 +81,7 @@ PC7  pin 10  ────────|<|──────────┬──�
              toward PC7)         4.7k (optional)
                                   |
                                  VCC
-PB2  pin 27  ────[ 470 or 1 kohm]──┬───────────────  SDA
+PB2  pin 27  ─────────[ 470 ohm]──┬───────────────  SDA
                                   |
                                  4.7k (optional)
                                   |
@@ -96,7 +96,7 @@ GND  pin 55  ──────────────────────�
   (open-drain) output. Current therefore only flows from the pull-up into PC7 (about 1 mA),
   never out of PC7. A 3.3 V device never sees the 5 V of the PC-1500, and a device that holds
   SCL low (clock stretching) never fights against PC7.
-- **The 470 Ω to 1 kΩ resistor on SDA** limits the current if PB2 and a device ever drive SDA at the
+- **The 470 Ω resistor on SDA** limits the current if PB2 and a device ever drive SDA at the
   same time. Do not use more than 1 kΩ here, or the low level becomes too high for the device.
 - The PC-1500 reads about 2.4 V or more as a high level, so 3.3 V pull-ups are fine.
 - PB2 is the cassette input of the CE-150, which drives this line.
