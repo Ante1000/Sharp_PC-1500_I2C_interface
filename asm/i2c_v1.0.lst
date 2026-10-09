@@ -1,0 +1,164 @@
+; I2C v1.0 - listing (adresy wzgledem IC = RAM+&400), 241 bajtow
+;
+                    ; =====================================================================
+                    ; I2C v1.0 - programowy master I2C dla Sharp PC-1500(A)
+                    ; SCL = PC7 (pin 10, &F008 bit 7), SDA = PB2 (CMT-IN, pin 27) albo PB0
+                    ; (pin 9) - wybor w instalatorze. CPU LH5801 @ 1,3 MHz.
+                    ;
+                    ; Wywolanie z BASIC-a (IA = RAM+&4FC, IS = RAM+&4FF, IC = RAM+&400):
+                    ;   POKE IA, D, W, R     D = adres urzadzenia (7 bitow, 0..127)
+                    ;                        W = liczba bajtow do wyslania z TX (0..255)
+                    ;                        R = liczba bajtow do odebrania do RX (0..255)
+                    ;   CALL IC              albo   CALL IC,E   (E = wynik)
+                    ; Transakcja:
+                    ;   W>0 albo R=0:  START, D*2+0 (zapis), bajty TX+0 .. TX+W-1
+                    ;   R>0:           START (powtorzony), D*2+1 (odczyt), bajty do RX+0 ..
+                    ;                  RX+R-1 (ACK po kazdym bajcie, NACK po ostatnim)
+                    ;   na koncu STOP. W=0 i R=0: sam adres - test obecnosci (skaner).
+                    ; Wynik (bajt IS, a przy CALL IC,E takze zmienna E; powrot z C=1):
+                    ;   0 = OK
+                    ;   1 = brak ACK po adresie (nie ma urzadzenia pod tym adresem)
+                    ;   2 = brak ACK po bajcie danych (urzadzenie odrzucilo zapis)
+                    ;   3 = SDA stale w stanie niskim (magistrala zablokowana; 10 impulsow
+                    ;       SCL jej nie zwolnilo), transakcja nie zostala zaczeta
+                    ; Bufory jak w SERIN/SEROUT v6.x: TX = RAM+&300, RX = RAM+&200, kazdy
+                    ; od poczatku strony pamieci, wiec licznik bajtow = mlodszy bajt adresu.
+                    ;
+                    ; Linie:
+                    ;   SCL: port C ma tylko wyjscia, wiec PC7 steruje SCL push-pull:
+                    ;        nie ma "clock stretching" (urzadzenie nie moze wstrzymac zegara).
+                    ;   SDA: open-drain udawany rejestrem kierunku DDB (&F00D):
+                    ;        SDA = 1: bit DDB = 0 (wejscie), stan wysoki daje rezystor
+                    ;        SDA = 0: bit DDB = 1 (wyjscie) i zatrzask OPB (&F00F) = 0.
+                    ;        Zatrzask jest zerowany po kazdym przelaczeniu na wyjscie, bo w
+                    ;        modelu LH5811 z MAME zapis do bitu-wejscia nie trafia do
+                    ;        zatrzasku, a odczyt portu wpisuje do niego stan nozki.
+                    ; Zegar SCL: ok. 11 kHz (bajt ok. 1 ms). Kazda zmiana linii to osobny
+                    ; rozkaz ORI/ANI (>= 17 cykli = 13 us), wiec minimalne czasy I2C (4,7 us)
+                    ; sa zawsze zachowane bez petli opozniajacych; I2C nie ma dolnej granicy
+                    ; czestotliwosci zegara.
+                    ;
+                    ; Rejestry: X = &F00D (DDB), Y = &F008 (port C), U = wskaznik bufora,
+                    ; A = dane. Liczniki bitow bez rejestru: znacznik (sentinel) jak w SEROUT.
+                    ; Z po SHL sprawdzamy przez BII A,&FF, bo wedlug instrukcji LH5801 rozkazy
+                    ; przesuniec nie ustawiaja flagi Z.
+                    ;
+                    ; Adres ladowania: IC = RAM+&400 (&4400 na PC-1500A), 241 bajtow, a za
+                    ; kodem parametry D, W, R i wynik (IA = RAM+&4FC .. IS = RAM+&4FF).
+                    ; Symbole wstawiane przez BASIC: IP = strona kodu (adresy SJP i
+                    ; parametrow), TP/RP = strony buforow TX/RX, BM = maska bitu SDA w
+                    ; porcie B (4 = PB2, 1 = PB0), DB = 255-BM.
+                    ; =====================================================================
+00  FD BE                   RIE                     ; bez przerwan
+02  48 F0                   LDI  XH,&F0
+04  4A 0D                   LDI  XL,&0D             ; X = &F00D (DDB: kierunek SDA)
+06  58 F0                   LDI  YH,&F0
+08  5A 08                   LDI  YL,&08             ; Y = &F008 (port C: SCL = PC7)
+0A  FD 49 DB                ANI  #(X),DB            ; SDA = 1 (zwolnione)
+0D  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+10  6A 09                   LDI  UL,9               ; SDA = 0: do 10 impulsow SCL
+12  FD ED F0 0F BM  BUSY:   BII  #(&F00F),BM        ; SDA = 1 -> magistrala wolna
+17  89 0C                   BZR+ FREE
+19  FD 59 7F                ANI  #(Y),&7F           ; impuls SCL: urzadzenie, ktore
+1C  FD 5B 80                ORI  #(Y),&80           ; trzyma SDA, wysyla kolejny bit
+1F  88 0F                   LOP  UL,BUSY
+21  B5 03                   LDI  A,3                ; SDA nadal 0: wynik 3, bez START/STOP
+23  8E 6C                   BCH+ EXIT
+25  A5 IP FD        FREE:   LDA  (IP,&FD)           ; W
+28  89 05                   BZR+ WR
+2A  A5 IP FE                LDA  (IP,&FE)           ; R
+2D  89 23                   BZR+ RD                 ; W = 0, R > 0: od razu odczyt
+2F  BE IP 99        WR:     SJP  START
+32  A5 IP FC                LDA  (IP,&FC)           ; D
+35  D9                      SHL                     ; D*2+0: zapis
+36  BE IP AF                SJP  SEND
+39  83 47                   BCS+ NAKA
+3B  68 TP                   LDI  UH,TP
+3D  6A 00                   LDI  UL,0               ; U = TX
+3F  24              WNEXT:  LDA  UL
+40  A7 IP FD                CPA  (IP,&FD)           ; wyslano W bajtow?
+43  8B 08                   BZS+ WEND
+45  65                      LIN  U                  ; A = bajt, U++
+46  BE IP AF                SJP  SEND
+49  83 3B                   BCS+ NAKD
+4B  9E 0E                   BCH- WNEXT
+4D  A5 IP FE        WEND:   LDA  (IP,&FE)           ; R
+50  8B 2C                   BZS+ OK
+52  BE IP 99        RD:     SJP  START              ; START albo powtorzony START
+55  A5 IP FC                LDA  (IP,&FC)
+58  FB                      SEC
+59  DB                      ROL                     ; D*2+1: odczyt
+5A  BE IP AF                SJP  SEND
+5D  83 23                   BCS+ NAKA
+5F  68 RP                   LDI  UH,RP
+61  6A 00                   LDI  UL,0               ; U = RX
+63  BE IP D9        RNEXT:  SJP  RECV               ; A = bajt, SCL = 0
+66  61                      SIN  U                  ; zapisz, U++
+67  24                      LDA  UL
+68  A7 IP FE                CPA  (IP,&FE)           ; odebrano R bajtow?
+6B  8B 0B                   BZS+ RLAST
+6D  BE IP A6                SJP  SDA0               ; ACK: SDA = 0 ...
+70  FD 5B 80                ORI  #(Y),&80           ; ... w 9. impulsie SCL
+73  FD 59 7F                ANI  #(Y),&7F
+76  9E 15                   BCH- RNEXT              ; RECV zwalnia SDA
+78  FD 5B 80        RLAST:  ORI  #(Y),&80           ; NACK (SDA = 1) w 9. impulsie SCL
+7B  FD 59 7F                ANI  #(Y),&7F
+7E  B5 00           OK:     LDI  A,0
+80  8E 06                   BCH+ STOP
+82  B5 01           NAKA:   LDI  A,1
+84  8E 02                   BCH+ STOP
+86  B5 02           NAKD:   LDI  A,2
+88  BE IP A6        STOP:   SJP  SDA0               ; SDA = 0 przy SCL = 0
+8B  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+8E  FD 49 DB                ANI  #(X),DB            ; SDA 0 -> 1 przy SCL = 1: STOP
+91  AE IP FF        EXIT:   STA  (IP,&FF)           ; IS = wynik
+94  0A                      STA  XL
+95  48 00                   LDI  XH,0               ; X = wynik ...
+97  FB                      SEC                     ; ... C=1: BASIC wpisze X do zmiennej z CALL IC,E
+98  9A                      RTN
+                    ;
+                    ; START: SDA 1 -> 0 przy SCL = 1, potem SCL = 0
+99  FD 49 DB        START:  ANI  #(X),DB            ; SDA = 1
+9C  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+9F  BE IP A6                SJP  SDA0               ; SDA 1 -> 0 przy SCL = 1: START
+A2  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+A5  9A                      RTN
+                    ;
+                    ; SDA0: SDA = 0 (wyjscie, zatrzask 0); A i flaga C bez zmian
+A6  FD 4B BM        SDA0:   ORI  #(X),BM            ; SDA = wyjscie ...
+A9  FD E9 F0 0F DB          ANI  #(&F00F),DB        ; ... zatrzask OPB = 0
+AE  9A                      RTN
+                    ;
+                    ; SEND: wyslij A (najstarszy bit pierwszy); C = 0 ACK, C = 1 brak ACK
+AF  FB              SEND:   SEC
+B0  DB                      ROL                     ; C = bit 7, znacznik 1 -> bit 0
+B1  83 05           SBIT:   BCS+ SONE
+B3  BE IP A6                SJP  SDA0               ; bit 0: SDA = 0
+B6  8E 03                   BCH+ SCLK
+B8  FD 49 DB        SONE:   ANI  #(X),DB            ; bit 1: SDA = 1
+BB  FD 5B 80        SCLK:   ORI  #(Y),&80           ; impuls SCL
+BE  FD 59 7F                ANI  #(Y),&7F
+C1  D9                      SHL                     ; C = nastepny bit
+C2  BF FF                   BII  A,&FF              ; A = 0 -> wyslano 8 bitow
+C4  99 15                   BZR- SBIT
+C6  FD 49 DB                ANI  #(X),DB            ; zwolnij SDA: ACK nadaje urzadzenie
+C9  FD 5B 80                ORI  #(Y),&80           ; 9. impuls SCL
+CC  FB                      SEC                     ; C = 1: brak ACK ...
+CD  FD ED F0 0F BM          BII  #(&F00F),BM
+D2  89 01                   BZR+ SNAK
+D4  F9                      REC                     ; ... SDA = 0: ACK, C = 0
+D5  FD 59 7F        SNAK:   ANI  #(Y),&7F           ; SCL = 0
+D8  9A                      RTN
+                    ;
+                    ; RECV: odbierz bajt do A (najstarszy bit pierwszy), konczy z SCL = 0
+D9  FD 49 DB        RECV:   ANI  #(X),DB            ; SDA = 1: nadaje urzadzenie
+DC  B5 01                   LDI  A,1                ; znacznik: po 8 bitach wyjdzie do C
+DE  FD 5B 80        RBIT:   ORI  #(Y),&80           ; SCL = 1
+E1  FB                      SEC
+E2  FD ED F0 0F BM          BII  #(&F00F),BM        ; odczyt SDA
+E7  89 01                   BZR+ RONE
+E9  F9                      REC
+EA  DB              RONE:   ROL                     ; A = A*2 + bit
+EB  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+EE  91 12                   BCR- RBIT
+F0  9A                      RTN
