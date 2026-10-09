@@ -18,6 +18,8 @@ English description: [docs/arduino_tester.md](docs/arduino_tester.md).
 | szkic `PC1500_I2C_Slave` | kompiluje się bez ostrzeżeń: 8,9 KB flash, 722 B RAM |
 | szkic `LCD_Keypad_Test` (test samego shielda) | sprawdzony na sprzęcie, działa |
 | pomiar prędkości (menu 6) na prawdziwym PC-1500 | **działa: SCL 9,397 kHz, 1011 B/s** (symulator przewidywał 9,871 kHz i 1062 B/s, czyli prawdziwy PC-1500 jest o około 5% wolniejszy) |
+| test ECHO (menu 5), 1000 prób | **0 błędów** |
+| to samo z szybszym I2C v1.1 | jeszcze nie sprawdzone; symulator przewiduje około 14,2 kHz i 1530 B/s |
 
 ## Potrzebne części
 
@@ -74,10 +76,11 @@ opcjonalnie:  A5 ──[ 4,7k ]── 5V      A4 ──[ 4,7k ]── 5V
 1. **Wgraj szkic** `PC1500_I2C_Slave.ino` do UNO (Arduino IDE, płytka „Arduino Uno”). Na LCD
    pojawi się „I2C slave 0x42”. Jeśli ekran jest pusty, ustaw kontrast niebieskim
    potencjometrem na shieldzie.
-2. **Zainstaluj I2C v1.0 na PC-1500:**
+2. **Zainstaluj I2C v1.0 (albo szybszą v1.1) na PC-1500:**
    - w trybie PRO wpisz `NEW0`, potem `NEW &4500` (PC-1500A; inne wartości są w tabeli w
      [README](README.md#memory));
-   - wpisz instalator `Basic/pc1500_i2c_installer-v1.0.txt` i uruchom go `RUN`;
+   - wpisz instalator `Basic/pc1500_i2c_installer-v1.0.txt` (albo `-v1.1.txt`) i uruchom go
+     `RUN`. Program testowy działa tak samo z obiema wersjami;
    - na pytanie o port SDA naciśnij ENTER (PB2).
 3. **Uruchom skaner instalatora** (`RUN 500`). Powinien znaleźć urządzenie pod **&42**.
 4. **W trybie PRO wpisz `NEW`**, żeby usunąć instalator. Kod I2C zostaje w pamięci.
@@ -185,10 +188,13 @@ zdążyć z obsługą przerwania, zanim PC-1500 podniesie zegar. Czasy poniżej 
 powiększone o 5% zmierzone na prawdziwym PC-1500.
 
 - **Polecenie i odczyt odpowiedzi to zawsze dwa osobne `CALL`.**
-  - Przy odczycie master daje Arduino około 72 µs na przygotowanie danych, a obsługa przerwania
+  - Przy odczycie master daje Arduino około 73 µs na przygotowanie danych, a obsługa przerwania
     trwa według szacunku około 25–30 µs. To wygodny zapas.
-  - Zapis i odczyt w jednym `CALL` (z powtórzonym startem) zostawiają tylko około 44 µs. To za
-    mały zapas.
+  - Zapis i odczyt w jednym `CALL` (z powtórzonym startem): przy powtórzonym starcie biblioteka
+    Wire wywołuje w przerwaniu `onReceive` dla zapisanych bajtów i Arduino może wtedy trzymać
+    SCL w stanie niskim, czego nasz master nie widzi. Adres odczytu mógłby wtedy przepaść.
+    (Wcześniej podawałem tu 44 µs; ta liczba wynikała z błędu w moim skrypcie pomiarowym.
+    Okno po adresie odczytu wynosi i tam około 73 µs.)
 - **Najwyżej 32 bajty na transakcję,** bo tyle ma bufor biblioteki Wire. Dłuższy zapis skończy
   się kodem E=2.
 

@@ -26,11 +26,13 @@ figures; the comparisons between the variants do not change.
 ## 2. Rules for a microcontroller as I2C device
 
 The master does not see clock stretching. After the ACK clock of a byte it keeps SCL low for
-about 155 µs (write), 72 µs (read, after the address), 55 µs (read, after each data byte) or
-44 µs (write followed by a repeated START and a read in one `CALL`); simulator + 5 %. From this:
+about 155 µs (write), 73 µs (read, after the address, also after a repeated START) and 55 µs
+(read, after each data byte) with v1.0; v1.1: 108, 73 and 51 µs (simulator + 5 %). From this:
 
 1. **Mailbox protocol:** the command is one write (W = length, R = 0); the answer is read with a
-   separate `CALL` (W = 0, R = fixed length). Never combine both in one `CALL`.
+   separate `CALL` (W = 0, R = fixed length). Never combine both in one `CALL`: a slave that
+   processes the written bytes at the repeated START (the Arduino Wire library calls
+   `onReceive` there) may hold SCL low just when the read address follows.
 2. **The answer starts with a status byte** ("busy", "OK", error). The PC-1500 polls until the
    answer is ready and can do other work in between (e.g. check `INKEY$`).
 3. **The answer must already be in the buffer** when the read starts. On an AVR: `onRequest`
@@ -162,6 +164,7 @@ the PC-1500 reads it (commands "request block n", "status", "read block"); the d
 | Variant | PC-1500 lines | Write | Read | 16 KB |
 |---|---|---|---|---|
 | I2C v1.0 (loops) | PC7, PB2 | 1.13 KB/s | 1.38 KB/s | 12–14 s |
+| I2C v1.1 (two-state send loop, faster receive; 255-byte transfers, v1.0 by the same measure: 1.18 / 1.46) | PC7, PB2 | 1.65 KB/s | 1.70 KB/s | about 10 s |
 | I2C with unrolled loops (estimate, not measured) | PC7, PB2 | about 1.5–1.8 KB/s | about 1.7–1.8 KB/s | about 9–11 s |
 | SPI, classic (SCK = PC7, MOSI = PB0, MISO = PB2), loop | PC7, PB0, PB2 | 1.62 KB/s | 1.76 KB/s | about 10 s |
 | SPI, classic, unrolled | PC7, PB0, PB2 | 2.09 KB/s | 2.18 KB/s | about 7.5 s |
@@ -234,8 +237,9 @@ from Wi-Fi.
 ## 7. Plan
 
 1. Test I2C v1.0 on a real PC-1500: Arduino UNO tester ([arduino_tester.md](arduino_tester.md)),
-   DS3231 or PCF8574. This also shows how the PB2 latch really behaves. First result: the
-   speed test of the Arduino tester works (9.397 kHz, 1011 B/s).
+   DS3231 or PCF8574. This also shows how the PB2 latch really behaves. First results with
+   v1.0: the speed test of the Arduino tester works (9.397 kHz, 1011 B/s) and the echo test
+   ran 1000 transfers without errors. Next: the same tests with the faster v1.1.
 2. ESP32 firmware: I2C slave (optionally UART) with the mailbox protocol; internet functions;
    SD card with file protocol; web file manager.
 3. Machine-code "disk" driver for the PC-1500 (SAVE, LOAD, DIR, DEL with checksum and retry),

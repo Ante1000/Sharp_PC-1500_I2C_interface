@@ -14,8 +14,9 @@
 
   Protokół. Każde polecenie to osobny zapis (CALL z W > 0, R = 0), potem osobny
   odczyt odpowiedzi (W = 0, R = 32). Nie łączyć zapisu i odczytu w jednym CALL:
-  po powtórzonym STARCIE nasz master daje slave'owi tylko ok. 42 us, a obsługa
-  przerwania w Arduino potrzebuje ok. 25-30 us - zbyt mały zapas.
+  przy powtórzonym STARCIE biblioteka Wire wywołuje onReceive w przerwaniu i AVR
+  może wtedy trzymać SCL w stanie niskim, czego nasz master nie widzi. Po adresie
+  odczytu master trzyma SCL nisko ok. 73 us; onRequest potrzebuje ok. 25-30 us.
   Najwyżej 32 bajty w transakcji (bufor biblioteki Wire); dłuższy zapis kończy się
   brakiem ACK (E = 2 w PC-1500).
 

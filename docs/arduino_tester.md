@@ -8,8 +8,10 @@ Arduino measure the real speed of the bus.
 
 > **Status:** both sketches compile without warnings (Arduino AVR core 1.8.6, `-Wall -Wextra`).
 > `LCD_Keypad_Test` has been run on the shield and works. With a real PC-1500 the speed test
-> (menu 6) works: **9.397 kHz, 1011 bytes/s**. The timing figures below come from the LH5801
-> simulator, increased by the 5 % by which the real PC-1500 was slower.
+> (menu 6) works: **9.397 kHz, 1011 bytes/s**, and the echo test (menu 5) ran 1000 transfers
+> **without errors** (both with I2C v1.0). The timing figures below come from the LH5801
+> simulator, increased by the 5 % by which the real PC-1500 was slower. The tester works
+> unchanged with the faster I2C v1.1; the simulator expects about 14.2 kHz and 1530 B/s there.
 
 | File | Contents |
 |---|---|
@@ -145,18 +147,23 @@ The master cannot see when the UNO holds SCL low (no clock stretching, PC7 is an
 So the UNO must finish its work for each byte before the PC-1500 raises SCL again. The
 simulator (+5 % as measured) gives the time the master keeps SCL low after the ACK clock:
 
-| Situation | SCL low after the ACK |
-|---|---|
-| write, after each byte | about 155 µs |
-| read, after the address (before the first data byte) | about 72 µs |
-| read, after each data byte | about 55 µs |
-| write followed by a repeated START and a read in the same `CALL` | about 44 µs |
+| Situation | v1.0 | v1.1 |
+|---|---|---|
+| write, after each byte | about 155 µs | about 108 µs |
+| read, after the address (before the first data byte) | about 73 µs | about 73 µs |
+| read, after each data byte | about 55 µs | about 51 µs |
 
 The `onRequest` handler of the Wire library runs at the address of a read and needs about
-25–30 µs on the UNO. 72 µs is a comfortable margin, 44 µs is not. Therefore:
+25–30 µs on the UNO, so 73 µs is a comfortable margin. (An earlier version of this page gave
+44 µs for the read address after a repeated START; that figure came from a measuring script
+that miscounted the clocks after the repeated START. The window is 73 µs there too.)
+Therefore:
 
 - **Command and answer are always two separate `CALL`s.** Do not combine W > 0 and R > 0 for
-  the Arduino (it works for real I2C chips, which answer in hardware).
+  the Arduino (it works for real I2C chips, which answer in hardware). At a repeated START the
+  Wire library calls `onReceive` for the bytes just written, inside the interrupt, and the AVR
+  may hold SCL low meanwhile; our master cannot see that, so the read address that follows
+  could be lost. With two `CALL`s, `onReceive` runs after the STOP, while BASIC is busy.
 - `onReceive` (runs at the STOP of a write) only copies the command; `loop()` executes it and
   prepares the answer, which `onRequest` sends with a single `Wire.write()`. No `Serial.print`
   in the handlers. The status byte 0 tells the PC-1500 that the answer is not ready yet.

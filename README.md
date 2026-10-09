@@ -1,6 +1,6 @@
 # I2C interface for Sharp PC-1500(A)
 
-**I2C master v1.0** by Alex F4VTS
+**I2C master v1.0 and v1.1** by Alex F4VTS
 
 A machine-language routine that turns the PC-1500(A) into an **I2C bus master** without a
 dedicated interface and without any modification of the computer: **SCL on PC7** (pin 10) and
@@ -11,10 +11,14 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 > **Status:** I2C v1.0 has been tested in an LH5801 simulator (instruction timings from MAME,
 > two models of the LH5811 port latch, simulated I2C devices). **First test on a real
 > PC-1500** with the Arduino UNO tester of this repository: the speed test works and measured
-> an SCL clock of 9.397 kHz and 1011 bytes/s; for the same transfer the simulator gives
-> 9.871 kHz, so the real PC-1500 is about 5 % slower than the simulator. Further tests
-> (DS3231, PCF8574, EEPROM) are still to be done. Please check the wiring carefully and report
-> your results.
+> an SCL clock of 9.397 kHz and 1011 bytes/s (the simulator gives 9.871 kHz for the same
+> transfer, so the real PC-1500 is about 5 % slower), and the echo test ran 1000 transfers of
+> 1–29 random bytes **without a single error**. Further tests (DS3231, PCF8574, EEPROM) are
+> still to be done.
+>
+> **I2C v1.1** (see [below](#version-11-faster)) does the same about 1.2–1.5 times faster. It
+> passes all simulator tests but has **not yet run on a real PC-1500**. Please check the wiring
+> carefully and report your results.
 
 | Document | Contents |
 |---|---|
@@ -30,8 +34,9 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 | File | Contents |
 |---|---|
 | `Basic/pc1500_i2c_installer-v1.0.txt` | BASIC installer of the I2C master, with a bus scanner and a read/write test |
+| `Basic/pc1500_i2c_installer-v1.1.txt` | the same for the faster I2C v1.1 (same use, same scanner and test) |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program for the Arduino UNO tester (menu, prompts in Polish) |
-| `asm/` | LH5801 assembler source and listing of I2C v1.0 |
+| `asm/` | LH5801 assembler sources and listings of I2C v1.0 and v1.1 |
 | `arduino/PC1500_I2C_Slave/` | Arduino UNO sketch: I2C device at &42 with LCD, buttons, ADC and speed measurement |
 | `arduino/LCD_Keypad_Test/` | Arduino UNO sketch that tests the LCD Keypad Shield by itself |
 | `docs/` | Arduino tester description and design notes |
@@ -143,8 +148,9 @@ either a UART device or an I2C bus at a time.
 
 1. Select PRO mode and enter `NEW0` [ENTER], then the `NEW` value from the table above
    (`NEW &4500` on a PC-1500A).
-2. Type in `Basic/pc1500_i2c_installer-v1.0.txt` (there is no tape recording of it yet) and
-   `RUN` it in RUN mode.
+2. Type in `Basic/pc1500_i2c_installer-v1.0.txt` or, for the faster version,
+   `Basic/pc1500_i2c_installer-v1.1.txt` (there is no tape recording yet) and `RUN` it in RUN
+   mode. Both versions are used in the same way.
 3. The installer asks for the SDA port: ENTER = PB2 (pin 27), `0` = PB0 (pin 9). It then shows
    the addresses and offers the bus scanner.
 4. When you no longer need the installer, enter `NEW` in PRO mode. The code stays in memory.
@@ -240,16 +246,47 @@ a complete example.
 Times from the simulator, increased by the 5 % measured on a real PC-1500, without the time
 BASIC needs for the `CALL` statement itself:
 
-| Transaction | Time |
-|---|---|
-| presence test (W=0, R=0) | 1.3 ms |
-| write one register (W=2) | 3.4 ms |
-| read 7 registers (W=1, R=7) | 8.4 ms |
-| write 255 bytes | 0.23 s |
-| read 255 bytes | 0.18 s |
+| Transaction | v1.0 | v1.1 |
+|---|---|---|
+| presence test (W=0, R=0) | 1.3 ms | 1.0 ms |
+| write one register (W=2) | 3.4 ms | 2.2 ms |
+| read 7 registers (W=1, R=7) | 8.4 ms | 6.6 ms |
+| write 255 bytes | 0.23 s | 0.16 s |
+| read 255 bytes | 0.18 s | 0.16 s |
 
-This is about 1.1 KB/s when writing and 1.4 KB/s when reading. With 32-byte writes (Arduino
-tester) a real PC-1500 measured 1011 bytes/s, as the address byte and START/STOP count more.
+With v1.0 this is about 1.1 KB/s when writing and 1.4 KB/s when reading; v1.1 reaches about
+1.6 KB/s in both directions. With 32-byte writes (Arduino tester) a real PC-1500 measured
+1011 bytes/s with v1.0, as the address byte and START/STOP count more; for v1.1 the simulator
+expects about 1530 bytes/s and 14.2 kHz in the same test.
+
+## Version 1.1: faster
+
+I2C v1.1 is a drop-in replacement for v1.0: the same pins, memory page, parameters (IA, IS),
+results, installer questions and test programs, so BASIC programs work unchanged. Its code
+fills the page up to the parameters (252 bytes, A0+&400 … A0+&4FB). What makes it faster:
+
+- **Sending a 0 bit is a single instruction.** v1.0 switched SDA to output and then cleared
+  the output latch for every 0 bit (with a subroutine call). The latch only has to be cleared
+  once: START clears it, and the ACK read after each byte (SDA low) leaves it at 0 in both
+  models of the LH5811 latch; after a NACK comes STOP, which clears it itself.
+- **SDA is only written when the bit changes.** The send loop has two states, "SDA high" and
+  "SDA low"; equal consecutive bits only clock SCL. A byte that ends with a 1 bit does not
+  release SDA again before the ACK.
+- **Faster receive loop:** while receiving, X points to the port B data register, so reading
+  SDA takes 14 cycles instead of 20, and a 0 bit needs no flag instruction (the carry is
+  always 0 inside the loop).
+- **Shorter paths:** one routine sends the address byte for writing and reading, START
+  contains the SDA-low code instead of calling it, and the ACK of the receiver uses absolute
+  addresses instead of switching registers.
+- **Microcontroller devices keep their time:** after the read address SCL stays low for about
+  73 µs, as in v1.0, so an Arduino has time to prepare its answer; after a received byte the
+  window is about 51 µs (v1.0: 55 µs).
+
+v1.1 was checked in the same simulator as v1.0: 11264 transactions in all combinations of
+latch model, cycle/flag table, SDA port (PB2/PB0), initial port contents, device hold time and
+RAM base, plus mutation tests (10 deliberate faults in the code, all detected). Its first test
+on hardware is still to do: install v1.1 instead of v1.0 and run the Arduino tester (speed
+test about 14 kHz and 1500 B/s expected, echo test without errors).
 
 ## How it works
 
@@ -272,8 +309,8 @@ tester) a real PC-1500 measured 1011 bytes/s, as the address byte and START/STOP
 - The routine returns with C=1 and the result in X, so BASIC stores it in the variable of
   `CALL IC,E`, as SERIN does with the number of received characters.
 
-Sources: `asm/i2c_v1.0.asm` (LH5801 assembler, comments in Polish) and `asm/i2c_v1.0.lst`
-(listing with the bytes of every instruction). Symbols that the installer fills in: IP (page
+Sources: `asm/i2c_v1.0.asm` and `asm/i2c_v1.1.asm` (LH5801 assembler, comments in Polish) and
+the listings `asm/i2c_v1.0.lst` and `asm/i2c_v1.1.lst` (with the bytes of every instruction). Symbols that the installer fills in: IP (page
 of the code), TP and RP (pages of the TX and RX buffers), BM and DB (bit mask of SDA in port B).
 
 ## Author
