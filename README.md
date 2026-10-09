@@ -52,7 +52,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
   to 10 SCL pulses free the bus before the transaction starts.
 - SCL clock about 10 kHz (measured on a PC-1500: 9.4 kHz on average over a 32-byte write;
   single clock periods vary between about 60 and 200 µs). I2C has no minimum clock frequency.
-- 241 bytes of code. It uses the same TX/RX buffers as the Software UART, so both can be
+- 241 bytes of code (v1.1: 252 bytes). It uses the same TX/RX buffers as the Software UART, so both can be
   installed together but can not operate simultaneously. The UART is not needed for I2C, they are both independent routines.
 
 ## Limitations
