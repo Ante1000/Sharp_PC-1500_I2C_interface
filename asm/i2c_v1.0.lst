@@ -33,7 +33,7 @@
                     ;        Zatrzask jest zerowany po kazdym przelaczeniu na wyjscie, bo w
                     ;        modelu LH5811 z MAME zapis do bitu-wejscia nie trafia do
                     ;        zatrzasku, a odczyt portu wpisuje do niego stan nozki.
-                    ; Zegar SCL: ok. 11 kHz (bajt ok. 1 ms). Kazda zmiana linii to osobny
+                    ; Zegar SCL: ok. 10 kHz (bajt ok. 1 ms). Kazda zmiana linii to osobny
                     ; rozkaz ORI/ANI (>= 17 cykli = 13 us), wiec minimalne czasy I2C (4,7 us)
                     ; sa zawsze zachowane bez petli opozniajacych; I2C nie ma dolnej granicy
                     ; czestotliwosci zegara.

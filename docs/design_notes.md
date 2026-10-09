@@ -5,6 +5,9 @@ PC-1500 Wi-Fi and a program "disk", and whether another 2-wire protocol would be
 I2C. **Nothing here is implemented yet**, apart from I2C v1.0 itself and the Arduino tester.
 The speeds were measured with test loops in an LH5801 simulator with the instruction timings
 of MAME; they do not include the time BASIC needs for the `CALL` and the work on the other side.
+A real PC-1500 runs I2C v1.0 about 5 % slower than the simulator (Arduino tester: 9.397 kHz
+instead of 9.871 kHz for the same transfer), so real speeds are about 5 % below the simulator
+figures; the comparisons between the variants do not change.
 
 ## 1. What limits every protocol on the PC-1500
 
@@ -23,8 +26,8 @@ of MAME; they do not include the time BASIC needs for the `CALL` and the work on
 ## 2. Rules for a microcontroller as I2C device
 
 The master does not see clock stretching. After the ACK clock of a byte it keeps SCL low for
-about 148 µs (write), 69 µs (read, after the address), 52 µs (read, after each data byte) or
-42 µs (write followed by a repeated START and a read in one `CALL`). From this:
+about 155 µs (write), 72 µs (read, after the address), 55 µs (read, after each data byte) or
+44 µs (write followed by a repeated START and a read in one `CALL`); simulator + 5 %. From this:
 
 1. **Mailbox protocol:** the command is one write (W = length, R = 0); the answer is read with a
    separate `CALL` (W = 0, R = fixed length). Never combine both in one `CALL`.
@@ -67,7 +70,7 @@ wait in a queue in the ESP32.
 
 | | Software UART (SERIN/SEROUT v6.2) | I2C v1.0 |
 |---|---|---|
-| tested on hardware | yes, also with an ESP32 | not yet |
+| tested on hardware | yes, also with an ESP32 | first tests with an Arduino UNO |
 | who controls the transfer | both sides send; the PC-1500 must be in `CALL SI` | always the PC-1500 |
 | lost data | possible if the ESP32 sends at the wrong moment | no, the PC-1500 gives the clock |
 | waiting for the internet | SERIN blocks (up to 30 s) | polling of the status, other work in between |
@@ -121,7 +124,7 @@ keyboard, not from a running program. A BASIC program in memory contains no abso
 so a program saved on a PC-1500A also loads on a PC-1500 with a CE-161. Machine-code blocks are
 loaded to their fixed address.
 
-Estimated time with I2C v1.0: 2 KB about 2 s, 8 KB about 7–8 s, 16 KB (CE-161) about 14–15 s.
+Estimated time with I2C v1.0: 2 KB about 2 s, 8 KB about 8 s, 16 KB (CE-161) about 15–16 s.
 
 **Commands:** first `CALL` with the name in a fixed string variable or in the TX buffer (our
 routines pass only numeric variables; whether `CALL` can pass a string is not known). Later real
@@ -133,7 +136,8 @@ conflicts with the RESERVE area, and the ROM routines for string arguments must 
 programs and plain text (edit on a PC), possibly compatibility with the files of PocketTools
 (bin2wav/wav2bin) and existing program archives, backup to the cloud.
 
-**Risks:** I2C v1.0 not yet tested on hardware; every block must be ready in the ESP32 before
+**Risks:** I2C v1.0 so far tested on hardware only with the Arduino tester; every block must
+be ready in the ESP32 before
 the PC-1500 reads it (commands "request block n", "status", "read block"); the driver adds about
 0.5 KB of code after the UART and I2C pages (`NEW` moves up again).
 
@@ -142,8 +146,8 @@ the PC-1500 reads it (commands "request block n", "status", "read block"); the d
 | Protocol | Fits the PC-1500? | ESP32 support | Estimated speed | Verdict |
 |---|---|---|---|---|
 | UART (Software UART) | yes, works | hardware | 9600 bps: about 0.95 KB/s | keep for PCs and other pocket computers |
-| I2C (v1.0) | yes, without clock stretching | hardware slave, answer prepared in advance | 1.1–1.4 KB/s | standard, many devices on one bus |
-| SMBus (I2C variant) | yes, 11 kHz is inside the SMBus range 10–100 kHz | as I2C | as I2C | borrow the PEC byte (CRC-8) and block transfers |
+| I2C (v1.0) | yes, without clock stretching | hardware slave, answer prepared in advance | 1.0–1.4 KB/s | standard, many devices on one bus |
+| SMBus (I2C variant) | partly: about 9.4 kHz is just below the SMBus minimum of 10 kHz | as I2C | as I2C | borrow the PEC byte (CRC-8) and block transfers |
 | SPI 3-wire (SIO): clock, shared data line, CS | only with CS emulated by the ESP32 | hardware on ESP32-S2/S3/C3/C6, **not on the classic ESP32** | about 2 KB/s | interesting on an ESP32-S3 |
 | SWD (ARM debug): host clock, bidirectional data | ideal shape: host clock, OK/WAIT/FAULT, parity | **no SWD in any ESP32** (ESP32 uses JTAG) | about 1.6 KB/s | best pattern for an own protocol |
 | SSI (encoders) | read only | software | fast read | one direction only |
@@ -207,7 +211,7 @@ pins 2, 8 and 9 should be avoided.
 
 | | I2C | SPI 3-wire (HD mode) |
 |---|---|---|
-| line driver on the PC-1500 | **exists**: 241 B, simulator-tested | new: about 200–250 B with loops, about 450 B unrolled |
+| line driver on the PC-1500 | **exists**: 241 B, simulator-tested, works on a real PC-1500 | new: about 200–250 B with loops, about 450 B unrolled |
 | transport (command, status, block, checksum, retry) | about 120–200 B (BASIC is enough for the internet functions) | about 100–150 B (status from the shared registers) |
 | "disk" (SAVE, LOAD, DIR) | about 300–400 B | about 300–400 B |
 | frame start | ✅ START/STOP detected by the C3 hardware | ⚠️ no CS line: an interrupt must detect START and set CS through a jumper; if it is late the bits shift |
@@ -218,7 +222,7 @@ pins 2, 8 and 9 should be avoided.
 | ESP32 off or hung | ✅ no ACK, E = 1 at once | ⚠️ the PC-1500 reads &FF or garbage: a fixed "magic" byte in the status is needed |
 | other chips on the wires | ✅ | ❌ |
 | software maturity | standard driver; ESP-IDF 5.x moves from slave driver v1 to v2 (v1 removed in IDF 6.0); Arduino `Wire` works | ESP-IDF only, few examples |
-| speed | 1.1–1.4 KB/s | 1.6–2.2 KB/s |
+| speed | 1.0–1.4 KB/s | 1.6–2.2 KB/s (simulator) |
 
 **Verdict:** build everything, including the "disk", on I2C: the low-level code exists, the
 hardware handles the framing, open drain excludes collisions, a missing ESP32 is detected at
@@ -230,7 +234,8 @@ from Wi-Fi.
 ## 7. Plan
 
 1. Test I2C v1.0 on a real PC-1500: Arduino UNO tester ([arduino_tester.md](arduino_tester.md)),
-   DS3231 or PCF8574. This also shows how the PB2 latch really behaves.
+   DS3231 or PCF8574. This also shows how the PB2 latch really behaves. First result: the
+   speed test of the Arduino tester works (9.397 kHz, 1011 B/s).
 2. ESP32 firmware: I2C slave (optionally UART) with the mailbox protocol; internet functions;
    SD card with file protocol; web file manager.
 3. Machine-code "disk" driver for the PC-1500 (SAVE, LOAD, DIR, DEL with checksum and retry),

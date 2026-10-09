@@ -7,9 +7,9 @@ text to the LCD, reads the buttons and the ADC, runs an echo test with random da
 Arduino measure the real speed of the bus.
 
 > **Status:** both sketches compile without warnings (Arduino AVR core 1.8.6, `-Wall -Wextra`).
-> `LCD_Keypad_Test` has been run on the shield and works. `PC1500_I2C_Slave` and the PC-1500
-> test program have **not yet been run together with a PC-1500**; the timing figures below come
-> from the LH5801 simulator.
+> `LCD_Keypad_Test` has been run on the shield and works. With a real PC-1500 the speed test
+> (menu 6) works: **9.397 kHz, 1011 bytes/s**. The timing figures below come from the LH5801
+> simulator, increased by the 5 % by which the real PC-1500 was slower.
 
 | File | Contents |
 |---|---|
@@ -63,7 +63,7 @@ Optional: 4.7 kΩ from A4 to 5 V and from A5 to 5 V.
   emulates an open-drain output with the direction register; the 470 Ω only limits the current
   if both sides ever drive the line at the same time.
 - **Pull-ups:** `Wire.begin()` already switches on the internal pull-ups of the ATmega on A4 and
-  A5 (20–50 kΩ). With short wires (up to 20–30 cm) this is enough at our 11 kHz: the rise time
+  A5 (20–50 kΩ). With short wires (up to 20–30 cm) this is enough at our 9–10 kHz: the rise time
   constant is about 1–7 µs, while the master leaves at least 13 µs between releasing SDA and
   raising SCL and at least 22 µs between the falling SCL edge and reading SDA. Add the external
   4.7 kΩ resistors if the ECHO test shows errors, with longer wires, with other modules on the
@@ -135,23 +135,24 @@ Answer: `[status][command number][N][N data bytes]`, N ≤ 29, so the data start
 Numbers of more than one byte: low byte first. The speed measurement: `F` arms a pin-change
 interrupt on A5; the first SCL edge of the next transaction starts the time, the STOP of the
 `X` write (in `onReceive`) ends it. SCL frequency = 9 clocks per byte (8 bits + ACK) × bytes
-including the address / time. The simulator predicts about 10–11 kHz and 1100–1200 B/s.
+including the address / time. For this transfer ('X' + bytes 1…30) the simulator gives
+9.871 kHz and 1062 B/s; a real PC-1500 measured **9.397 kHz and 1011 B/s**, about 5 % slower.
 
 ## 6. Why the protocol looks like this
 
 The master cannot see when the UNO holds SCL low (no clock stretching, PC7 is an output only).
 So the UNO must finish its work for each byte before the PC-1500 raises SCL again. The
-simulator gives the time the master keeps SCL low after the ACK clock:
+simulator (+5 % as measured) gives the time the master keeps SCL low after the ACK clock:
 
 | Situation | SCL low after the ACK |
 |---|---|
-| write, after each byte | about 148 µs |
-| read, after the address (before the first data byte) | about 69 µs |
-| read, after each data byte | about 52 µs |
-| write followed by a repeated START and a read in the same `CALL` | about 42 µs |
+| write, after each byte | about 155 µs |
+| read, after the address (before the first data byte) | about 72 µs |
+| read, after each data byte | about 55 µs |
+| write followed by a repeated START and a read in the same `CALL` | about 44 µs |
 
 The `onRequest` handler of the Wire library runs at the address of a read and needs about
-25–30 µs on the UNO. 69 µs is a comfortable margin, 42 µs is not. Therefore:
+25–30 µs on the UNO. 72 µs is a comfortable margin, 44 µs is not. Therefore:
 
 - **Command and answer are always two separate `CALL`s.** Do not combine W > 0 and R > 0 for
   the Arduino (it works for real I2C chips, which answer in hardware).

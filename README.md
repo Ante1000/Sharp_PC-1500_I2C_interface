@@ -9,9 +9,12 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 (SERIN/SEROUT). One diode and a few resistors go between the connector and the I2C bus.
 
 > **Status:** I2C v1.0 has been tested in an LH5801 simulator (instruction timings from MAME,
-> two models of the LH5811 port latch, simulated I2C devices), **but not yet on a real
-> PC-1500**. Please check the wiring carefully and report your results. The Arduino UNO tester
-> in this repository is meant for exactly this first test.
+> two models of the LH5811 port latch, simulated I2C devices). **First test on a real
+> PC-1500** with the Arduino UNO tester of this repository: the speed test works and measured
+> an SCL clock of 9.397 kHz and 1011 bytes/s; for the same transfer the simulator gives
+> 9.871 kHz, so the real PC-1500 is about 5 % slower than the simulator. Further tests
+> (DS3231, PCF8574, EEPROM) are still to be done. Please check the wiring carefully and report
+> your results.
 
 | Document | Contents |
 |---|---|
@@ -41,7 +44,8 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
   routine, result code in a BASIC variable.
 - Bus recovery: if a device holds SDA low (for example after a transfer was interrupted), up
   to 10 SCL pulses free the bus before the transaction starts.
-- SCL clock about 11 kHz (I2C has no minimum clock frequency).
+- SCL clock about 10 kHz (measured on a PC-1500: 9.4 kHz on average over a 32-byte write;
+  single clock periods vary between about 60 and 200 µs). I2C has no minimum clock frequency.
 - 241 bytes of code. It uses the same TX/RX buffers as the Software UART, so both can be
   installed together; the UART is not needed for I2C.
 
@@ -233,17 +237,19 @@ a complete example.
 
 ### Timing
 
-Measured in the simulator, without the time BASIC needs for the `CALL` statement itself:
+Times from the simulator, increased by the 5 % measured on a real PC-1500, without the time
+BASIC needs for the `CALL` statement itself:
 
 | Transaction | Time |
 |---|---|
 | presence test (W=0, R=0) | 1.3 ms |
-| write one register (W=2) | 3.3 ms |
-| read 7 registers (W=1, R=7) | 7.9 ms |
-| write 255 bytes | 0.22 s |
+| write one register (W=2) | 3.4 ms |
+| read 7 registers (W=1, R=7) | 8.4 ms |
+| write 255 bytes | 0.23 s |
 | read 255 bytes | 0.18 s |
 
-This is about 1.1 KB/s when writing and 1.4 KB/s when reading.
+This is about 1.1 KB/s when writing and 1.4 KB/s when reading. With 32-byte writes (Arduino
+tester) a real PC-1500 measured 1011 bytes/s, as the address byte and START/STOP count more.
 
 ## How it works
 
@@ -260,6 +266,9 @@ This is about 1.1 KB/s when writing and 1.4 KB/s when reading.
 - Every change of a line is a separate read-modify-write instruction of at least 17 cycles
   (13 µs at 1.3 MHz), so all minimum I2C standard-mode times (4.7 µs) hold without delay
   loops.
+- A real PC-1500 runs the routine about 5 % slower than MAME's cycle table predicts (a
+  slightly lower CPU clock or extra cycles for some instructions). I2C only has minimum times,
+  so a slower master only adds margin; nothing in the code depends on the exact speed.
 - The routine returns with C=1 and the result in X, so BASIC stores it in the variable of
   `CALL IC,E`, as SERIN does with the number of received characters.
 
