@@ -48,7 +48,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 - SCL clock about 10 kHz (measured on a PC-1500: 9.4 kHz on average over a 32-byte write;
   single clock periods vary between about 60 and 200 µs). I2C has no minimum clock frequency.
 - 241 bytes of code. It uses the same TX/RX buffers as the Software UART, so both can be
-  installed together; the UART is not needed for I2C.
+  installed together but can not operate simultaneously. The UART is not needed for I2C, they are both independent routines.
 
 ## Limitations
 
@@ -75,41 +75,40 @@ in the Software UART repository.
 
 ```
 PC-1500 (60-pin)                                  I2C device / module
-                    Schottky diode
+            Schottky diode or 1N4149
 PC7  pin 10  ────────|<|──────────┬───────────────  SCL
             (cathode/stripe       |
-             toward PC7)         4.7k
+             toward PC7)         4.7k (optional)
                                   |
                                  VCC
-PB2  pin 27  ────[ 470 ]──────────┬───────────────  SDA
+PB2  pin 27  ────[ 470 or 1 kohm]──┬───────────────  SDA
                                   |
-                                 4.7k
+                                 4.7k (optional)
                                   |
                                  VCC
 GND  pin 55  ─────────────────────────────────────  GND
 ```
 
 - **VCC** is the supply of the I2C device, 3.3 V or 5 V. The device has its own supply.
-- **Pull-up resistors** 4.7–10 kΩ on SCL and SDA. Many modules already have them on board;
-  then do not add more.
-- **The diode on SCL** (BAT43, BAT85, 1N5817 or any other Schottky diode, not a 1N4148) is
+-- **The diode on SCL** (BAT43, BAT85, 1N5817 or any other Schottky diode, 1N4148 also works) is
   needed because PC7 can only drive a hard high or low level: with the diode the PC-1500 can
   only pull SCL low and the pull-up resistor makes the high level, as with a real I2C
   (open-drain) output. Current therefore only flows from the pull-up into PC7 (about 1 mA),
   never out of PC7. A 3.3 V device never sees the 5 V of the PC-1500, and a device that holds
   SCL low (clock stretching) never fights against PC7.
-- **The 470 Ω resistor on SDA** limits the current if PB2 and a device ever drive SDA at the
+- **The 470 Ω to 1 kΩ resistor on SDA** limits the current if PB2 and a device ever drive SDA at the
   same time. Do not use more than 1 kΩ here, or the low level becomes too high for the device.
 - The PC-1500 reads about 2.4 V or more as a high level, so 3.3 V pull-ups are fine.
-- PB2 is the cassette input of the CE-150, which drives this line. **Remove the PC-1500(A) from
-  the CE-150 while I2C is in use** (as with the UART).
+- PB2 is the cassette input of the CE-150, which drives this line.
+- **Pull-up resistors**  4.7–10 kΩ on SCL and SDA. They are not needed if the IC device has them. Many modules already have them on board; then do not add more. If you connect to a microcontroller you can enable internal pull-ups by software if not enabled (e.g. wire.h library does that by default).
+- **Remove the PC-1500(A) from the CE-150 while I2C is in use** (as with the UART).
 - **SDA on PB0** (with the [CE-150 modification](https://github.com/Ante1000/Sharp_PC-1500_Software_UART/blob/main/Modification_for_use_with_CE-150_EN.pdf)):
   answer `0` to the SDA question of the installer. The modification puts resistors in series
   with PB0 (1 kΩ in the PC-1500 and 1–10 kΩ in the CE-150) and with PC7 (1–5 kΩ). For I2C
   the series resistance must stay low (about 2 kΩ in total on each line), the pull-ups
   should be weak (10–22 kΩ) and the optional control LED must be disconnected, otherwise
   the low level is too high. The Schottky diode goes between the PC7 wire and SCL as above.
-  Not tested.
+  
 
 ## Memory
 
