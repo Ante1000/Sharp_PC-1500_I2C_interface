@@ -28,7 +28,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 |---|---|
 | this file | features, connection, installation, use in BASIC, examples |
 | [docs/arduino_tester.md](docs/arduino_tester.md) | test set: Arduino UNO + LCD Keypad Shield as an I2C device, with a test program for the PC-1500 |
-| [HELP_arduino_test_PL.md](HELP_arduino_test_PL.md) | help for the test program `pc1500_i2c_arduino_test-v1.0`, in Polish: wiring, start, menu, error messages, protocol |
+| [HELP_arduino_test.md](HELP_arduino_test.md) | help for the test program `pc1500_i2c_arduino_test-v1.0` with I2C v1.3: wiring, start, menu, error messages, protocol |
 | [docs/design_notes.md](docs/design_notes.md) | ideas for the next steps: ESP32 as Wi-Fi bridge and program "disk", I2C compared with SPI 3-wire and other 2-wire protocols, speed measurements in the simulator |
 | [Software UART: Modification_for_use_with_CE-150_EN.pdf](https://github.com/Ante1000/Sharp_PC-1500_Software_UART/blob/main/Modification_for_use_with_CE-150_EN.pdf) | optional modification for use with the CE-150 (needed only for SDA on PB0) |
 | [Software UART: HELP_NEW_memory.md](https://github.com/Ante1000/Sharp_PC-1500_Software_UART/blob/main/HELP_NEW_memory.md) | RAM start for every memory module |
@@ -37,12 +37,9 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 
 | File | Contents |
 |---|---|
-| `Basic/pc1500_i2c_installer-v1.0.txt` | BASIC installer of the I2C master, with a bus scanner and a read/write test |
-| `Basic/pc1500_i2c_installer-v1.1.txt` | the same for the faster I2C v1.1 (same use, same scanner and test) |
-| `Basic/pc1500_i2c_installer-v1.2.txt` | the same for I2C v1.2 (same use; tested on hardware) |
-| `Basic/pc1500_i2c_installer-v1.3.txt` | the same for I2C v1.3, the fastest version; tests the CPU flags before installing |
-| `Basic/pc1500_lh5801_flag_test.txt` | small test: do SHL and ROL set the Z flag on a real LH5801? (decides a further optimization) |
-| `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program for the Arduino UNO tester (menu, prompts in Polish) |
+| `Basic/pc1500_i2c_installer-v1.3.txt` | BASIC installer of the I2C master v1.3, with a CPU test, a bus scanner and a read/write test |
+| `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program for the Arduino UNO tester (menu, prompts in English) |
+| `Archive/` | installers of I2C v1.0, v1.1 and v1.2, the stand-alone LH5801 flag test and the Polish version of the test program |
 | `asm/` | LH5801 assembler sources and listings of I2C v1.0 to v1.3 |
 | `arduino/PC1500_I2C_Slave/` | Arduino UNO sketch: I2C device at &42 with LCD, buttons, ADC and speed measurement |
 | `arduino/LCD_Keypad_Test/` | Arduino UNO sketch that tests the LCD Keypad Shield by itself |
@@ -155,9 +152,10 @@ either a UART device or an I2C bus at a time.
 
 1. Select PRO mode and enter `NEW0` [ENTER], then the `NEW` value from the table above
    (`NEW &4500` on a PC-1500A).
-2. Type in `Basic/pc1500_i2c_installer-v1.0.txt` or, for the faster version,
-   `Basic/pc1500_i2c_installer-v1.1.txt` / `-v1.2.txt` / `-v1.3.txt` (there is no tape
-   recording yet) and `RUN` it in RUN mode. All versions are used in the same way.
+2. Type in `Basic/pc1500_i2c_installer-v1.3.txt` (there is no tape recording yet) and `RUN`
+   it in RUN mode. It first tests the CPU; if it shows "USE I2C V1.2", install
+   `Archive/pc1500_i2c_installer-v1.2.txt` instead. The installers of the older versions are
+   in `Archive/`; all versions are used in the same way.
 3. The installer asks for the SDA port: ENTER = PB2 (pin 27), `0` = PB0 (pin 9). It then shows
    the addresses and offers the bus scanner.
 4. When you no longer need the installer, enter `NEW` in PRO mode. The code stays in memory.
@@ -373,7 +371,7 @@ v1.3 (251 bytes, same page, parameters and use) is v1.2 with two more changes:
   leaves A, so the two `BII A,&FF` tests (7 cycles each time a 1 bit is sent) are gone. This
   only works if the CPU sets Z on shifts. MAME's LH5801 does, the LH5801 manual says shifts
   leave Z alone. **The v1.3 installer therefore runs a 47-byte CPU test first** (the same as
-  `Basic/pc1500_lh5801_flag_test.txt`) and installs nothing if the result is not 15; then it
+  `Archive/pc1500_lh5801_flag_test.txt`) and installs nothing if the result is not 15; then it
   shows "USE I2C V1.2".
 - **Byte counters with `CPI UL,n`** (7 cycles) instead of `LDA UL` + `CPA (IP,&FD)` (18
   cycles) when sending and receiving. Every call first writes W and R into the two `CPI`

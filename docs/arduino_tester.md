@@ -19,8 +19,8 @@ Arduino measure the real speed of the bus.
 |---|---|
 | `arduino/LCD_Keypad_Test/LCD_Keypad_Test.ino` | stand-alone test of the shield: buttons, LCD, character set, backlight, RST |
 | `arduino/PC1500_I2C_Slave/PC1500_I2C_Slave.ino` | I2C device at &42 for the PC-1500 (comments in Polish) |
-| `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program with a menu (prompts in Polish) |
-| [`HELP_arduino_test_PL.md`](../HELP_arduino_test_PL.md) | help for the test program in Polish: wiring, start, menu, error messages, protocol |
+| `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program with a menu (prompts in English; the Polish version is in `Archive/`) |
+| [`HELP_arduino_test.md`](../HELP_arduino_test.md) | help for the test program with I2C v1.3: wiring, start, menu, error messages, protocol |
 
 The UNO is a good tester because everything runs at 5 V (no level converters, and the short
 5 V pulses that PB2 may produce, see the README, do no harm), it has enough RAM (the slave sketch
@@ -83,8 +83,8 @@ Optional: 4.7 kΩ from A4 to 5 V and from A5 to 5 V.
 ## 3. Start
 
 1. Upload `PC1500_I2C_Slave.ino`. The LCD shows "I2C slave 0x42".
-2. On the PC-1500 install I2C v1.0 (README: `NEW &4500` in PRO mode, type in the installer,
-   `RUN`).
+2. On the PC-1500 install I2C v1.3 (README: `NEW &4500` in PRO mode, type in
+   `Basic/pc1500_i2c_installer-v1.3.txt`, `RUN`).
 3. The scanner of the installer (`RUN 500`) must find a device at **&42**.
 4. Enter `NEW` in PRO mode to remove the installer; the I2C code stays in memory.
 5. Type in `Basic/pc1500_i2c_arduino_test-v1.0.txt` and `RUN` it. At the start it checks that
@@ -95,12 +95,12 @@ Optional: 4.7 kΩ from A4 to 5 V and from A5 to 5 V.
 | No. | Test | What it does |
 |---|---|---|
 | 1 | ID | reads "PC1500 I2C v1.0": the simplest write and read test |
-| 2 | TEKST | sends a text to row 0 or 1 of the Arduino LCD |
+| 2 | TEXT | sends a text to row 0 or 1 of the Arduino LCD |
 | 3 | ADC | continuous measurement of A0–A3: value and voltage; any key of the PC-1500 stops it. Channel 0 is the button ladder, so pressing the shield buttons changes the value |
-| 4 | KLAW | the shield buttons on the PC-1500: the button pressed now and the last one pressed |
+| 4 | KEYS | the shield buttons on the PC-1500: the button pressed now and the last one pressed |
 | 5 | ECHO | N transfers of 1–29 random bytes; the Arduino sends them back, the PC-1500 compares them and counts the errors |
-| 6 | PREDK | speed measurement: command `F`, then a write of 31 bytes; the Arduino measures the time from the first SCL edge to the STOP and reports the SCL frequency and the bytes per second |
-| 7 | SWIATLO | LCD backlight on/off |
+| 6 | SPEED | speed measurement: command `F`, then a write of 31 bytes; the Arduino measures the time from the first SCL edge to the STOP and reports the SCL frequency and the bytes per second |
+| 7 | LIGHT | LCD backlight on/off |
 | 8 | CLS | clears the LCD |
 
 On the Arduino, **SELECT** switches the LCD between the text from the PC-1500 and the I2C
