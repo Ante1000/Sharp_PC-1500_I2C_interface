@@ -414,7 +414,7 @@ fast as I2C gets within one 256-byte page.
   `CALL IC,E`, as SERIN does with the number of received characters.
 
 Sources: `asm/i2c_v1.0.asm` to `asm/i2c_v1.3.asm` (LH5801 assembler,
-comments in Polish) and the listings `asm/i2c_v1.x.lst` (with the bytes of every instruction). Symbols that the installer fills in: IP (page
+comments in English) and the listings `asm/i2c_v1.x.lst` (with the bytes of every instruction). Symbols that the installer fills in: IP (page
 of the code), TP and RP (pages of the TX and RX buffers), BM and DB (bit mask of SDA in port B).
 
 ## Author

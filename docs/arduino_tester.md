@@ -34,10 +34,10 @@ backlight on D10. Menu (UP/DOWN to select, SELECT or RIGHT to start, LEFT to go 
 
 | Item | Test |
 |---|---|
-| 1 Przyciski | shows the button and the raw ADC value; hold LEFT for 2 s to leave |
-| 2 Test LCD | all pixels on and off, checkerboard and its negative, frames of all 32 fields, field addressing, the ROM characters, cursor and blink, scrolling, display off/on |
-| 3 Znaki LCD | browser of the character set, 16 codes at a time (UP/DOWN) |
-| 4 Podswietlenie | backlight on/off (D10 is never driven high, some clones have no base resistor) |
+| 1 Buttons | shows the button and the raw ADC value; hold LEFT for 2 s to leave |
+| 2 LCD test | all pixels on and off, checkerboard and its negative, frames of all 32 fields, field addressing, the ROM characters, cursor and blink, scrolling, display off/on |
+| 3 LCD charset | browser of the character set, 16 codes at a time (UP/DOWN) |
+| 4 Backlight | backlight on/off (D10 is never driven high, some clones have no base resistor) |
 | 5 Info / RST | restart counter: RST resets the UNO and cannot be read, so the counter in `.noinit` RAM shows that RST works |
 
 If the screen is blank or shows only boxes in the top row, adjust the contrast with the blue

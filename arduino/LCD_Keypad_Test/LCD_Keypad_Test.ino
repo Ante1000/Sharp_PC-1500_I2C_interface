@@ -1,39 +1,39 @@
 /*
-  LCD_Keypad_Test.ino - program testowy dla Arduino UNO + "LCD Keypad Shield"
-  (klon shielda DFRobot: wyświetlacz HD44780 16x2 i 6 przycisków)
+  LCD_Keypad_Test.ino - test program for an Arduino UNO + "LCD Keypad Shield"
+  (clone of the DFRobot shield: HD44780 display 16x2 and 6 buttons)
 
-  Połączenia shielda:
+  Shield connections:
     LCD:  RS = D8, E = D9, D4..D7 = D4..D7   ->  LiquidCrystal lcd(8, 9, 4, 5, 6, 7)
-    RIGHT, UP, DOWN, LEFT, SELECT: drabinka rezystorów na wejściu analogowym A0
-    RST:  przycisk RESET Arduino. Procesor nie może go odczytać, więc test RST
-          polega na restarcie płytki: licznik restartów leży w RAM-ie, który
-          przeżywa reset, ale nie wyłączenie zasilania (menu "5 Info / RST").
-    Podświetlenie: D10 (nie w każdym klonie)
+    RIGHT, UP, DOWN, LEFT, SELECT: resistor ladder on the analog input A0
+    RST:  the RESET button of the Arduino. The CPU cannot read it, so the RST test
+          is a restart of the board: the restart counter lives in RAM, which
+          survives a reset but not a power-off (menu "5 Info / RST").
+    Backlight: D10 (not on every clone)
 
-  Obsługa:
-    UP / DOWN       wybór pozycji menu
-    SELECT / RIGHT  uruchomienie testu
-    LEFT            powrót do menu (w teście przycisków: przytrzymać LEFT 2 s)
-  Monitor portu szeregowego: 115200 bps - naciśnięte przyciski i surowe wartości ADC.
+  Use:
+    UP / DOWN       select a menu item
+    SELECT / RIGHT  start the test
+    LEFT            back to the menu (in the button test: hold LEFT for 2 s)
+  Serial monitor: 115200 bps - pressed buttons and raw ADC values.
 
-  Pusty ekran albo same prostokąty w górnym wierszu: wyreguluj kontrast
-  niebieskim potencjometrem na shieldzie.
+  Blank screen or only boxes in the top row: adjust the contrast with the
+  blue potentiometer on the shield.
 */
 #include <LiquidCrystal.h>
 
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);   // RS, E, D4, D5, D6, D7
 
-const uint8_t KEY_PIN = A0;            // drabinka rezystorów przycisków
-const uint8_t BL_PIN = 10;             // podświetlenie
+const uint8_t KEY_PIN = A0;            // resistor ladder of the buttons
+const uint8_t BL_PIN = 10;             // backlight
 
 enum Key : uint8_t { K_NONE, K_RIGHT, K_UP, K_DOWN, K_LEFT, K_SELECT };
 const char *const KEY_NAME[] = {"------", "RIGHT ", "UP    ", "DOWN  ", "LEFT  ", "SELECT"};
 const char KEY_LETTER[] = "-RUDLS";
-const uint8_t ALL_KEYS = 0x3E;         // bity 1..5: RIGHT, UP, DOWN, LEFT, SELECT
+const uint8_t ALL_KEYS = 0x3E;         // bits 1..5: RIGHT, UP, DOWN, LEFT, SELECT
 
-// Progi ADC między przyciskami. Obejmują obie popularne wersje shielda:
-// v1.1 (ok. 0 / 100 / 255 / 410 / 640) i v1.0 (ok. 0 / 145 / 330 / 505 / 740).
-// Bez naciśnięcia odczyt wynosi ok. 1023.
+// ADC thresholds between the buttons. They cover both common versions of the shield:
+// v1.1 (about 0 / 100 / 255 / 410 / 640) and v1.0 (about 0 / 145 / 330 / 505 / 740).
+// With no button pressed the reading is about 1023.
 Key decodeAdc(int v) {
   if (v < 60) return K_RIGHT;
   if (v < 200) return K_UP;
@@ -43,18 +43,18 @@ Key decodeAdc(int v) {
   return K_NONE;
 }
 
-// Zmienne w sekcji .noinit nie są zerowane przy starcie programu: RAM zachowuje
-// je po resecie (przycisk RST), a po włączeniu zasilania mają przypadkową wartość.
+// Variables in the .noinit section are not cleared when the program starts: RAM keeps
+// them after a reset (RST button), and after power-on they hold random values.
 uint16_t bootMagic __attribute__((section(".noinit")));
 uint16_t resetCount __attribute__((section(".noinit")));
-bool coldStart;                        // true = start po włączeniu zasilania
+bool coldStart;                        // true = start after power-on
 bool backlightOn = true;
 
-// ---------------------------------------------------------------- przyciski
-int adcValue = 1023;                   // ostatni surowy odczyt A0
-Key stableKey = K_NONE;                // stan po eliminacji drgań styków
+// ---------------------------------------------------------------- buttons
+int adcValue = 1023;                   // last raw reading of A0
+Key stableKey = K_NONE;                // state after debouncing
 
-// Jeden odczyt co 10 ms; nowy stan obowiązuje po 3 kolejnych zgodnych odczytach.
+// One reading every 10 ms; a new state counts after 3 equal readings in a row.
 Key readKey() {
   static Key candidate = K_NONE;
   static uint8_t same = 0;
@@ -73,14 +73,14 @@ Key readKey() {
   return stableKey;
 }
 
-// Zwraca przycisk raz, w chwili naciśnięcia; w pozostałych wywołaniach K_NONE.
+// Returns a button once, when it is pressed; K_NONE in all other calls.
 Key keyPressed() {
   static Key prev = K_NONE;
   Key k = readKey();
   Key ev = (k != prev && k != K_NONE) ? k : K_NONE;
   prev = k;
   if (ev != K_NONE) {
-    Serial.print(F("Przycisk "));
+    Serial.print(F("Button "));
     Serial.print(KEY_NAME[ev]);
     Serial.print(F(" ADC="));
     Serial.println(adcValue);
@@ -88,7 +88,7 @@ Key keyPressed() {
   return ev;
 }
 
-// Czeka do ms milisekund albo do naciśnięcia przycisku; zwraca ten przycisk.
+// Waits up to ms milliseconds or until a button is pressed; returns that button.
 Key waitOrKey(uint16_t ms) {
   uint32_t t0 = millis();
   while (millis() - t0 < ms) {
@@ -106,7 +106,7 @@ Key waitKey() {
 }
 
 // ---------------------------------------------------------------- LCD
-// Wypisuje tekst w wierszu row i dopełnia go spacjami do 16 znaków.
+// Prints a text in row and pads it with spaces to 16 characters.
 void printRow(uint8_t row, const char *s) {
   lcd.setCursor(0, row);
   uint8_t n = 0;
@@ -136,9 +136,9 @@ void fillScreen(uint8_t code) {
   }
 }
 
-// Podświetlenie. W części klonów D10 steruje bazą tranzystora bez rezystora,
-// więc stan wysoki na wyjściu D10 przeciąża pin. Dlatego: włączone = D10 jako
-// wejście (rezystor na shieldzie włącza tranzystor), wyłączone = wyjście LOW.
+// Backlight. On some clones D10 drives the base of a transistor without a resistor,
+// so a high level on the D10 output overloads the pin. Therefore: on = D10 as an
+// input (a resistor on the shield switches the transistor on), off = output LOW.
 void setBacklight(bool on) {
   backlightOn = on;
   if (on) {
@@ -149,9 +149,9 @@ void setBacklight(bool on) {
   }
 }
 
-// ---------------------------------------------------------------- testy
-// 1: przyciski. Pokazuje bieżący przycisk i wartość ADC, w drugim wierszu
-// listę przycisków naciśniętych przynajmniej raz. Wyjście: LEFT przez 2 s.
+// ---------------------------------------------------------------- tests
+// 1: buttons. Shows the current button and the ADC value, in the second row
+// the buttons pressed at least once. Exit: LEFT for 2 s.
 void testButtons() {
   uint8_t done = 0;
   bool reported = false;
@@ -194,19 +194,19 @@ void testButtons() {
 
     if (done == ALL_KEYS && !reported) {
       reported = true;
-      Serial.println(F("Wszystkie 5 przyciskow dziala"));
+      Serial.println(F("All 5 buttons work"));
     }
   }
 }
 
-// Krok testu LCD: czeka ms albo do przycisku; false = przerwane przez LEFT.
+// Step of the LCD test: waits ms or until a button; false = aborted with LEFT.
 bool stepWait(uint16_t ms) {
   return waitOrKey(ms) != K_LEFT;
 }
 
-// 2: wyświetlacz. Kolejne kroki zmienia czas albo dowolny przycisk; LEFT przerywa.
+// 2: display. The steps advance by time or with any button; LEFT aborts.
 void testLcd() {
-  // Własne znaki 5x8 (ostatni, 8. wiersz to linia kursora - też jest testowany).
+  // Custom 5x8 characters (the last, 8th row is the cursor line - it is tested too).
   static uint8_t allOn[8] = {0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F};
   static uint8_t checkA[8] = {0x15, 0x0A, 0x15, 0x0A, 0x15, 0x0A, 0x15, 0x0A};
   static uint8_t checkB[8] = {0x0A, 0x15, 0x0A, 0x15, 0x0A, 0x15, 0x0A, 0x15};
@@ -220,30 +220,30 @@ void testLcd() {
   bool ok = true;
   lcd.clear();
   printRow(0, F("Test LCD"));
-  printRow(1, F("LEFT = przerwij"));
+  printRow(1, F("LEFT = abort"));
   ok = stepWait(1500);
 
-  if (ok) {                            // wszystkie piksele zapalone
+  if (ok) {                            // all pixels on
     fillScreen(0);
     ok = stepWait(2000);
   }
-  if (ok) {                            // wszystkie zgaszone
+  if (ok) {                            // all off
     lcd.clear();
     ok = stepWait(1000);
   }
-  if (ok) {                            // szachownica i jej negatyw: każdy piksel
-    fillScreen(1);                     // raz zapalony, raz zgaszony
+  if (ok) {                            // checkerboard and its negative: every
+    fillScreen(1);                     // pixel once on and once off
     ok = stepWait(1500);
   }
   if (ok) {
     fillScreen(2);
     ok = stepWait(1500);
   }
-  if (ok) {                            // ramki: granice wszystkich 32 pól
+  if (ok) {                            // frames: borders of all 32 fields
     fillScreen(3);
     ok = stepWait(1500);
   }
-  if (ok) {                            // adresowanie: pole po polu, cyfry 0..F
+  if (ok) {                            // addressing: field by field, digits 0..F
     lcd.clear();
     for (uint8_t i = 0; i < 32 && ok; i++) {
       lcd.setCursor(i % 16, i / 16);
@@ -252,16 +252,16 @@ void testLcd() {
     }
     if (ok) ok = stepWait(1500);
   }
-  for (uint16_t base = 0x20; base < 0x100 && ok; base += 32) {   // znaki z ROM-u
+  for (uint16_t base = 0x20; base < 0x100 && ok; base += 32) {   // ROM characters
     for (uint8_t row = 0; row < 2; row++) {
       lcd.setCursor(0, row);
       for (uint8_t i = 0; i < 16; i++) lcd.write((uint8_t)(base + row * 16 + i));
     }
     ok = stepWait(1200);
   }
-  if (ok) {                            // kursor i miganie
+  if (ok) {                            // cursor and blinking
     lcd.clear();
-    printRow(0, F("Kursor + blink"));
+    printRow(0, F("Cursor + blink"));
     lcd.setCursor(7, 1);
     lcd.cursor();
     lcd.blink();
@@ -269,9 +269,9 @@ void testLcd() {
     lcd.noBlink();
     lcd.noCursor();
   }
-  if (ok) {                            // przesuwanie zawartości ekranu
+  if (ok) {                            // scrolling the screen contents
     lcd.clear();
-    printRow(0, F("Przewijanie"));
+    printRow(0, F("Scrolling"));
     printRow(1, F("<<<<<<<>>>>>>>>"));
     for (uint8_t i = 0; i < 16 && ok; i++) {
       lcd.scrollDisplayLeft();
@@ -282,7 +282,7 @@ void testLcd() {
       ok = stepWait(120);
     }
   }
-  if (ok) {                            // wyłączenie i włączenie wyświetlacza
+  if (ok) {                            // display off and on again
     lcd.clear();
     printRow(0, F("Display off/on"));
     ok = stepWait(800);
@@ -290,37 +290,37 @@ void testLcd() {
     if (ok) ok = stepWait(800);
     lcd.display();
   }
-  lcd.clear();                         // kasuje też przesunięcie ekranu
+  lcd.clear();                         // also clears the scroll offset
   if (ok) {
-    printRow(0, F("Test LCD: koniec"));
-    printRow(1, F("dowolny przycisk"));
+    printRow(0, F("LCD test: done"));
+    printRow(1, F("press any key"));
     waitKey();
   }
 }
 
-// 3: przeglądarka znaków: 16 kodów naraz. UP/DOWN/RIGHT - strona, LEFT - menu.
-// Kody 00-0F to znaki własne (CGRAM): po teście LCD widać w nich wzory testowe.
+// 3: character browser: 16 codes at a time. UP/DOWN/RIGHT - page, LEFT - menu.
+// Codes 00-0F are the custom characters (CGRAM): after the LCD test they show the test patterns.
 void browseCharset() {
   uint8_t base = 0x20;
   char buf[17];
   for (;;) {
-    snprintf(buf, sizeof buf, "Kody %02X-%02X U/D", base, base + 15);
+    snprintf(buf, sizeof buf, "Codes %02X-%02X U/D", base, base + 15);
     printRow(0, buf);
     lcd.setCursor(0, 1);
     for (uint8_t i = 0; i < 16; i++) lcd.write((uint8_t)(base + i));
     Key k = waitKey();
     if (k == K_LEFT) return;
-    if (k == K_UP) base -= 16;         // uint8_t zawija się: 00 <-> F0
+    if (k == K_UP) base -= 16;         // uint8_t wraps around: 00 <-> F0
     if (k == K_DOWN || k == K_RIGHT) base += 16;
   }
 }
 
-// 4: podświetlenie. SELECT/RIGHT/UP/DOWN przełącza, LEFT - menu (z podświetleniem).
-// Jeśli nic się nie zmienia, klon nie ma sterowania podświetleniem na D10.
+// 4: backlight. SELECT/RIGHT/UP/DOWN toggles, LEFT - menu (with the backlight on).
+// If nothing changes, the clone has no backlight control on D10.
 void testBacklight() {
   for (;;) {
-    printRow(0, backlightOn ? F("Podswietl.: ON") : F("Podswietl.: OFF"));
-    printRow(1, F("SEL=zmien LEFT<"));
+    printRow(0, backlightOn ? F("Backlight: ON") : F("Backlight: OFF"));
+    printRow(1, F("SEL=toggle LEFT<"));
     if (waitKey() == K_LEFT) {
       setBacklight(true);
       return;
@@ -329,10 +329,10 @@ void testBacklight() {
   }
 }
 
-// 5: informacja o starcie i liczniku resetów (test przycisku RST). LEFT - menu.
+// 5: information on the start and the reset counter (test of the RST button). LEFT - menu.
 void showInfo() {
   char buf[17];
-  printRow(0, coldStart ? F("Start: zasilanie") : F("Start: RST/reset"));
+  printRow(0, coldStart ? F("Start: power on") : F("Start: RST/reset"));
   uint32_t t0 = millis();
   uint8_t shown = 255;
   for (;;) {
@@ -340,10 +340,10 @@ void showInfo() {
     if (phase != shown) {
       shown = phase;
       if (phase == 0) {
-        snprintf(buf, sizeof buf, "Resety RST: %u", resetCount);
+        snprintf(buf, sizeof buf, "RST resets: %u", resetCount);
         printRow(1, buf);
       } else {
-        printRow(1, F("Wcisnij RST"));
+        printRow(1, F("Press RST"));
       }
     }
     if (keyPressed() == K_LEFT) return;
@@ -351,7 +351,7 @@ void showInfo() {
 }
 
 // ---------------------------------------------------------------- menu
-const char *const MENU[] = {"1 Przyciski", "2 Test LCD", "3 Znaki LCD", "4 Podswietlenie",
+const char *const MENU[] = {"1 Buttons", "2 LCD test", "3 LCD charset", "4 Backlight",
                             "5 Info / RST"};
 const uint8_t MENU_N = sizeof MENU / sizeof MENU[0];
 uint8_t menuSel = 0;
@@ -365,11 +365,11 @@ void showMenu() {
 }
 
 void setup() {
-  if (bootMagic != 0xA55A) {           // RAM bez znacznika: włączenie zasilania
+  if (bootMagic != 0xA55A) {           // RAM without the marker: power-on
     bootMagic = 0xA55A;
     resetCount = 0;
     coldStart = true;
-  } else {                             // znacznik przetrwał: reset przyciskiem RST
+  } else {                             // the marker survived: reset with RST
     resetCount++;
     coldStart = false;
   }
@@ -379,12 +379,12 @@ void setup() {
   lcd.begin(16, 2);
 
   Serial.println(F("LCD Keypad Shield - test"));
-  Serial.println(coldStart ? F("Start po wlaczeniu zasilania") : F("Start po resecie (RST)"));
-  Serial.print(F("Licznik resetow: "));
+  Serial.println(coldStart ? F("Start after power-on") : F("Start after reset (RST)"));
+  Serial.print(F("Reset counter: "));
   Serial.println(resetCount);
 
   printRow(0, F("LCD Keypad Test"));
-  printRow(1, coldStart ? F("Start: zasilanie") : F("Start: RST/reset"));
+  printRow(1, coldStart ? F("Start: power on") : F("Start: RST/reset"));
   waitOrKey(1500);
   showMenu();
 }
