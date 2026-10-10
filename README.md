@@ -18,10 +18,11 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 >
 > **I2C v1.2** (see [below](#version-12-faster-writing)) has also been tested on a real
 > PC-1500 with the Arduino tester: **16.624 kHz and 1789 bytes/s** (1.8 times v1.0) and the
-> echo test without errors. **I2C v1.3** is about 7 % faster again when writing, but it needs
-> an LH5801 whose `SHL`/`ROL` set the Z flag; its installer checks this first. v1.1 and v1.3
-> have so far only run in the simulator. Please check the wiring carefully and report your
-> results.
+> echo test without errors. **I2C v1.3** (see [below](#version-13-z-flag-from-the-shifts))
+> works on the real PC-1500 too: **17.505 kHz and 1884 bytes/s** (1.86 times v1.0), the echo
+> test ran 100 transfers without errors, and its installer found that the CPU sets the Z flag
+> on `SHL`/`ROL`, which v1.3 needs. v1.1 has so far only run in the simulator. Please check
+> the wiring carefully and report your results.
 
 | Document | Contents |
 |---|---|
@@ -265,8 +266,45 @@ With v1.0 this is about 1.1 KB/s when writing and 1.4 KB/s when reading; v1.1 re
 tester) a real PC-1500 measured 1011 bytes/s and 9.4 kHz with v1.0, as the address byte and
 START/STOP count more; the same test measured **1789 bytes/s and 16.624 kHz with v1.2**
 (simulator: 1908 bytes/s, so v1.2 runs about 6.6 % slower than the simulator on the real
-PC-1500). With the same factor the simulator expects about 1510 bytes/s and 14.0 kHz for v1.1
-and about 1890 bytes/s and 17.6 kHz for v1.3.
+PC-1500) and **1884 bytes/s and 17.505 kHz with v1.3** (about 7 % below the simulator). With
+the same factor the simulator expects about 1510 bytes/s and 14.0 kHz for v1.1.
+
+### Speed in perspective
+
+With I2C v1.3 a byte takes 9 SCL clocks (8 bits and the ACK), so 17.505 kHz moves 1945 bytes/s
+on the wire; the measured 1884 bytes/s include the address byte, START and STOP of a 31-byte
+write.
+
+| Way to transfer | Bytes/s | 5697-byte program |
+|---|---|---|
+| `CLOAD` from cassette (Ben Ryves: about 7 minutes for 5697 bytes) | about 14 | about 7 min |
+| Fast Load from cassette, 4000 baud (Ben Ryves) | about 190 | about 30 s |
+| Software UART, 9600 bps (8N1: 10 bits per byte) | 960 | 6 s |
+| **I2C v1.3**, one 31-byte write (measured) | **1884** | **3 s** |
+
+So I2C v1.3 is about 140 times faster than `CLOAD` and about 10 times faster than Fast Load.
+In UART terms, 1884 bytes/s × 10 bits = 18 840 bps, about **19 200 baud**: twice the fastest
+Software UART setting (9600 bps). Reading is slower (0.62 ms per byte, about 1.6 KB/s, like
+16 000 bps).
+
+**Larger files in packets** need pauses between the I2C transactions: the PC-1500 prepares
+and checks the data, the device writes to its SD card, and the PC-1500 asks for the status.
+Estimates for v1.3 on a real PC-1500 (write of n bytes ≈ 0.45 ms + (n + 1) × 0.514 ms; read of
+n bytes ≈ 0.96 ms + n × 0.62 ms; status read ≈ 1.6 ms):
+
+| Driver on the PC-1500 | Packet | Write to the device | Read from the device | 10 KB |
+|---|---|---|---|---|
+| machine code, device with a buffer of 256 bytes or more (ESP32) | 250 bytes | about 1.75 KB/s | about 1.45 KB/s | 6–7 s |
+| machine code, Arduino UNO (32-byte Wire buffer) | 29 bytes | about 1.4 KB/s | about 1.1 KB/s | 7–9 s |
+| BASIC, I2C buffer page pointed at the data (no copying) | 255 bytes | about 1.1–1.4 KB/s | about 1.0–1.2 KB/s | 8–11 s |
+| BASIC, every byte copied with `POKE`/`PEEK` | 29 bytes | about 60–100 bytes/s | about 60–100 bytes/s | 2–3 min |
+
+The BASIC figures assume 50–100 ms per packet for the BASIC statements and 8–15 ms per byte for
+a `POKE`/`PEEK` loop; they are not measured. "Buffer page pointed at the data" means that BASIC
+pokes the page of the data into the code (v1.3: TX page at IC+&35, RX page at IC+&53) and
+restores it afterwards; a transfer covers bytes 0–254 of that page, so byte 255 has to travel
+separately. With a machine-code driver the pauses cost only 5–20 % of the time; with BASIC
+copying every byte, BASIC and not the I2C bus sets the speed.
 
 ## Version 1.1: faster
 
@@ -350,6 +388,11 @@ deliberate faults in its code are all detected. Extra edge tests (passed by v1.0
 v1.3): device addresses 0 and 127, all 256 byte values written and read, W = R = 255 in one
 call, NACK on the first and on the last data byte, absent devices for every W/R combination
 and calls with changing W and R (the rewritten `CPI` operands).
+
+**On a real PC-1500** the v1.3 installer accepted the CPU (so the real LH5801 sets Z on
+shifts, as in MAME), and the Arduino tester measured **17.505 kHz and 1884 bytes/s**
+(v1.2: 16.624 kHz and 1789 bytes/s) with 100 echo transfers without errors. This is about as
+fast as I2C gets within one 256-byte page.
 
 ## How it works
 

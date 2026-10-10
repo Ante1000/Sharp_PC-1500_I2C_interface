@@ -12,8 +12,8 @@ Arduino measure the real speed of the bus.
 > **without errors** (both with I2C v1.0). The timing figures below come from the LH5801
 > simulator, increased by the 5 % by which the real PC-1500 was slower. The tester works
 > unchanged with the faster versions: with **I2C v1.2 a real PC-1500 measured 16.624 kHz and
-> 1789 B/s**, again with an error-free echo test; for v1.3 about 17.6 kHz and 1890 B/s are
-> expected.
+> 1789 B/s**, and with **I2C v1.3 17.505 kHz and 1884 B/s**, both with an error-free echo
+> test.
 
 | File | Contents |
 |---|---|

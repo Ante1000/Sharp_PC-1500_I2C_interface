@@ -21,7 +21,7 @@ English description: [docs/arduino_tester.md](docs/arduino_tester.md).
 | test ECHO (menu 5), 1000 prób | **0 błędów** |
 | to samo z szybszym I2C v1.1 | jeszcze nie sprawdzone; symulator przewiduje około 14,2 kHz i 1530 B/s |
 | to samo z I2C v1.2 | **działa: 16,624 kHz, 1789 B/s, ECHO bez błędów** |
-| to samo z najszybszym I2C v1.3 | jeszcze nie sprawdzone; prognoza około 17,6 kHz i 1890 B/s (instalator v1.3 najpierw sprawdza flagi procesora) |
+| to samo z najszybszym I2C v1.3 | **działa: 17,505 kHz, 1884 B/s, ECHO (100 prób) bez błędów**; test flag w instalatorze przeszedł, czyli procesor ustawia Z po `SHL`/`ROL` |
 
 ## Potrzebne części
 
