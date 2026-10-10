@@ -6,8 +6,10 @@ i2c_v1.0.asm / .lst      I2C master, 241 bytes, loaded at RAM+&400 (&4400 on a P
                          (tested on a real PC-1500 with the Arduino tester)
 i2c_v1.1.asm / .lst      faster version, 252 bytes, same address, parameters and use
                          (installer Basic/pc1500_i2c_installer-v1.1.txt); simulator only
-i2c_v1.2.asm / .lst      fastest version (faster sending), 251 bytes, same use
-                         (installer Basic/pc1500_i2c_installer-v1.2.txt); simulator only
+i2c_v1.2.asm / .lst      faster sending, 251 bytes, same use
+                         (installer Basic/pc1500_i2c_installer-v1.2.txt); tested on hardware
+i2c_v1.3.asm / .lst      fastest version, 251 bytes, same use; needs SHL/ROL that set Z
+                         (installer Basic/pc1500_i2c_installer-v1.3.txt checks the CPU)
 
 Operands that the installers (Basic/pc1500_i2c_installer-v1.x.txt) fill in:
   IP                   high byte of the code address (SJP targets and parameters)
