@@ -4,8 +4,8 @@ The BASIC program `Basic/pc1500_i2c_arduino_test-v1.0.txt` tests the I2C connect
 Sharp PC-1500(A) with **I2C v1.3** and an **Arduino UNO + LCD Keypad Shield** running the sketch
 `arduino/PC1500_I2C_Slave/PC1500_I2C_Slave.ino`.
 
-**The PC-1500 is the master**, because the I2C routine can only be a master. **The Arduino is
-the device (slave) at address &42.** The PC-1500 sends commands: text for the LCD, reading the
+**The PC-1500 is the MASTER**, because the I2C routine can only be a master. **The Arduino is
+the device (SLAVE) at address &42.** The PC-1500 sends commands: text for the LCD, reading the
 ADC and the shield buttons, an echo test and a speed measurement. The Arduino carries them out
 and sends the answers back.
 
@@ -213,7 +213,7 @@ after the read address and **51 µs** after each received byte.
   pins to 5 V and GND, wiper to A1) or use channel 0.
 - Errors in the ECHO test: add the external 4.7 kΩ resistors on A4 and A5, shorten the wires
   and check that the diode is a Schottky diode.
-- Speed measurement: a real PC-1500 with I2C v1.3 measured 17.505 kHz and 1884 B/s. The kHz
+- Speed measurement results: a real PC-1500A with I2C v1.3 measured 17.505 kHz and 1884 B/s. The kHz
   figure is the average over the whole write: 9 clocks per byte (8 bits + ACK) times 32 bytes,
   divided by the time. Single clock periods vary with the data, from about 42 µs for data bits
   to about 110 µs around the ACK.
