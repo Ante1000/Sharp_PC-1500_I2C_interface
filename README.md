@@ -346,7 +346,10 @@ In the simulator v1.3 writes about 7 % faster than v1.2 (255 bytes in 125 ms ins
 after each written byte, 74 µs after the read address (two `NOP`s keep it as long as in
 v1.2) and 51 µs after each received byte. v1.3 passes all simulator transactions with the
 MAME flag behaviour, its installer refuses to install with the manual's behaviour, and 16
-deliberate faults in its code are all detected.
+deliberate faults in its code are all detected. Extra edge tests (passed by v1.0, v1.2 and
+v1.3): device addresses 0 and 127, all 256 byte values written and read, W = R = 255 in one
+call, NACK on the first and on the last data byte, absent devices for every W/R combination
+and calls with changing W and R (the rewritten `CPI` operands).
 
 ## How it works
 
