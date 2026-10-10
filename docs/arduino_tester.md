@@ -18,7 +18,7 @@ Arduino measure the real speed of the bus.
 | File | Contents |
 |---|---|
 | `arduino/LCD_Keypad_Test/LCD_Keypad_Test.ino` | stand-alone test of the shield: buttons, LCD, character set, backlight, RST |
-| `arduino/PC1500_I2C_Slave/PC1500_I2C_Slave.ino` | I2C device at &42 for the PC-1500 (comments in Polish) |
+| `arduino/PC1500_I2C_Slave/PC1500_I2C_Slave.ino` | I2C device at &42 for the PC-1500 (comments in English) |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program with a menu (prompts in English; the Polish version is in `Archive/`) |
 | [`HELP_arduino_test.md`](../HELP_arduino_test.md) | help for the test program with I2C v1.3: wiring, start, menu, error messages, protocol |
 
