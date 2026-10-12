@@ -20,7 +20,7 @@ Arduino measure the real speed of the bus.
 | `arduino/LCD_Keypad_Test/LCD_Keypad_Test.ino` | stand-alone test of the shield: buttons, LCD, character set, backlight, RST |
 | `arduino/PC1500_I2C_Slave/PC1500_I2C_Slave.ino` | I2C device at &42 for the PC-1500 (comments in English) |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program with a menu (prompts in English; the Polish version is in `Archive/`) |
-| [`HELP_arduino_test.md`](../HELP_arduino_test.md) | help for the test program with I2C v1.3: wiring, start, menu, error messages, protocol |
+| [`HELP_arduino_test.md`](../HELP_arduino_test.md) | help for the test program with I2C v1.4: wiring, start, menu, error messages, protocol |
 
 The UNO is a good tester because everything runs at 5 V (no level converters, and the short
 5 V pulses that PB2 may produce, see the README, do no harm), it has enough RAM (the slave sketch
@@ -83,8 +83,8 @@ Optional: 4.7 kΩ from A4 to 5 V and from A5 to 5 V.
 ## 3. Start
 
 1. Upload `PC1500_I2C_Slave.ino`. The LCD shows "I2C slave 0x42".
-2. On the PC-1500 install I2C v1.3 (README: `NEW &4500` in PRO mode, type in
-   `Basic/pc1500_i2c_installer-v1.3.txt`, `RUN`).
+2. On the PC-1500 install I2C v1.4 (README: `NEW &4500` in PRO mode, `CLOAD` from
+   `wav/i2c_v1.4.wav` or type in `Basic/pc1500_i2c_installer-v1.4.txt`, `RUN`).
 3. The scanner of the installer (`RUN 500`) must find a device at **&42**.
 4. Enter `NEW` in PRO mode to remove the installer; the I2C code stays in memory.
 5. Type in `Basic/pc1500_i2c_arduino_test-v1.0.txt` and `RUN` it. At the start it checks that

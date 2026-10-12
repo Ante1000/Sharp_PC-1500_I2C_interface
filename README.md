@@ -1,6 +1,6 @@
 # I2C interface for Sharp PC-1500(A)
 
-**I2C master v1.0 to v1.3** by Alex F4VTS
+**I2C master v1.0 to v1.4** by Alex F4VTS
 
 A machine-language routine that turns the PC-1500(A) into an **I2C bus master** without a
 dedicated interface and without any modification of the computer: **SCL on PC7** (pin 10) and
@@ -21,14 +21,16 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 > echo test without errors. **I2C v1.3** (see [below](#version-13-z-flag-from-the-shifts))
 > works on the real PC-1500 too: **17.505 kHz and 1884 bytes/s** (1.86 times v1.0), the echo
 > test ran 100 transfers without errors, and its installer found that the CPU sets the Z flag
-> on `SHL`/`ROL`, which v1.3 needs. v1.1 has so far only run in the simulator. Please check
-> the wiring carefully and report your results.
+> on `SHL`/`ROL`, which v1.3 needs. **I2C v1.4** (see [below](#version-14-interrupts-on-again))
+> is v1.3 with one fix: it switches the interrupts on again before it returns to BASIC. Its
+> timing is that of v1.3, so the v1.3 measurements apply to it; v1.4 itself has so far run in
+> the simulator only, like v1.1. Please check the wiring carefully and report your results.
 
 | Document | Contents |
 |---|---|
 | this file | features, connection, installation, use in BASIC, examples |
 | [docs/arduino_tester.md](docs/arduino_tester.md) | test set: Arduino UNO + LCD Keypad Shield as an I2C device, with a test program for the PC-1500 |
-| [HELP_arduino_test.md](HELP_arduino_test.md) | help for the test program `pc1500_i2c_arduino_test-v1.0` with I2C v1.3: wiring, start, menu, error messages, protocol |
+| [HELP_arduino_test.md](HELP_arduino_test.md) | help for the test program `pc1500_i2c_arduino_test-v1.0` with I2C v1.4: wiring, start, menu, error messages, protocol |
 | [docs/design_notes.md](docs/design_notes.md) | ideas for the next steps: ESP32 as Wi-Fi bridge and program "disk", I2C compared with SPI 3-wire and other 2-wire protocols, speed measurements in the simulator |
 | [Software UART: Modification_for_use_with_CE-150_EN.pdf](https://github.com/Ante1000/Sharp_PC-1500_Software_UART/blob/main/Modification_for_use_with_CE-150_EN.pdf) | optional modification for use with the CE-150 (needed only for SDA on PB0) |
 | [Software UART: HELP_NEW_memory.md](https://github.com/Ante1000/Sharp_PC-1500_Software_UART/blob/main/HELP_NEW_memory.md) | RAM start for every memory module |
@@ -37,10 +39,11 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 
 | File | Contents |
 |---|---|
-| `Basic/pc1500_i2c_installer-v1.3.txt` | BASIC installer of the I2C master v1.3, with a CPU test, a bus scanner and a read/write test |
+| `Basic/pc1500_i2c_installer-v1.4.txt` | BASIC installer of the I2C master v1.4, with a CPU test, a bus scanner and a read/write test |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program for the Arduino UNO tester (menu, prompts in English) |
-| `Archive/` | installers of I2C v1.0, v1.1 and v1.2, the stand-alone LH5801 flag test and the Polish version of the test program |
-| `asm/` | LH5801 assembler sources and listings of I2C v1.0 to v1.3 |
+| `wav/i2c_v1.4.wav`, `wav/test.wav` | tape recordings of the installer v1.4 (name `I2CV1.4`) and of the test program (name `TEST`) for `CLOAD` |
+| `Archive/` | installers of I2C v1.0 to v1.3 (with the recording of v1.3), the stand-alone LH5801 flag test and the Polish version of the test program |
+| `asm/` | LH5801 assembler sources and listings of I2C v1.0 to v1.4 |
 | `arduino/PC1500_I2C_Slave/` | Arduino UNO sketch: I2C device at &42 with LCD, buttons, ADC and speed measurement |
 | `arduino/LCD_Keypad_Test/` | Arduino UNO sketch that tests the LCD Keypad Shield by itself |
 | `docs/` | Arduino tester description and design notes |
@@ -56,7 +59,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
   to 10 SCL pulses free the bus before the transaction starts.
 - SCL clock about 10 kHz (measured on a PC-1500: 9.4 kHz on average over a 32-byte write;
   single clock periods vary between about 60 and 200 µs). I2C has no minimum clock frequency.
-- 241 bytes of code (v1.1: 252 bytes, v1.2 and v1.3: 251 bytes). It uses the same TX/RX buffers as the Software UART, so both can be
+- 241 bytes of code (v1.1 and v1.4: 252 bytes, v1.2 and v1.3: 251 bytes). It uses the same TX/RX buffers as the Software UART, so both can be
   installed together but can not operate simultaneously. The UART is not needed for I2C, they are both independent routines.
 
 ## Limitations
@@ -67,7 +70,8 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
   microcontroller-based slaves) may not work; a microcontroller slave must have its answer
   ready in time (see [docs/arduino_tester.md](docs/arduino_tester.md)).
 - 10-bit addresses are not supported.
-- Interrupts are disabled during the `CALL`, as with SERIN/SEROUT.
+- Interrupts are disabled during the `CALL`, as with SERIN/SEROUT. v1.4 switches them on again
+  before it returns; v1.0 to v1.3 leave them off until the ROM switches them on again.
 
 ## Connection
 
@@ -152,9 +156,9 @@ either a UART device or an I2C bus at a time.
 
 1. Select PRO mode and enter `NEW0` [ENTER], then the `NEW` value from the table above
    (`NEW &4500` on a PC-1500A).
-2. Type in `Basic/pc1500_i2c_installer-v1.3.txt` (there is no tape recording yet) and `RUN`
-   it in RUN mode. It first tests the CPU; if it shows "USE I2C V1.2", install
-   `Archive/pc1500_i2c_installer-v1.2.txt` instead. The installers of the older versions are
+2. Load `wav/i2c_v1.4.wav` with `CLOAD` (name on the tape: `I2CV1.4`) or type in
+   `Basic/pc1500_i2c_installer-v1.4.txt`, and `RUN` it in RUN mode. It first tests the CPU;
+   if it shows "USE I2C V1.2", install `Archive/pc1500_i2c_installer-v1.2.txt` instead. The installers of the older versions are
    in `Archive/`; all versions are used in the same way.
 3. The installer asks for the SDA port: ENTER = PB2 (pin 27), `0` = PB0 (pin 9). It then shows
    the addresses and offers the bus scanner.
@@ -251,7 +255,7 @@ a complete example.
 Times from the simulator, increased by the 5 % measured on a real PC-1500, without the time
 BASIC needs for the `CALL` statement itself:
 
-| Transaction | v1.0 | v1.1 | v1.2 | v1.3 |
+| Transaction | v1.0 | v1.1 | v1.2 | v1.3, v1.4 |
 |---|---|---|---|---|
 | presence test (W=0, R=0) | 1.3 ms | 1.0 ms | 1.0 ms | 0.9 ms |
 | write one register (W=2) | 3.4 ms | 2.2 ms | 1.9 ms | 1.9 ms |
@@ -299,8 +303,8 @@ n bytes ≈ 0.96 ms + n × 0.62 ms; status read ≈ 1.6 ms):
 
 The BASIC figures assume 50–100 ms per packet for the BASIC statements and 8–15 ms per byte for
 a `POKE`/`PEEK` loop; they are not measured. "Buffer page pointed at the data" means that BASIC
-pokes the page of the data into the code (v1.3: TX page at IC+&35, RX page at IC+&53) and
-restores it afterwards; a transfer covers bytes 0–254 of that page, so byte 255 has to travel
+pokes the page of the data into the code (v1.4: TX page at IC+&35, RX page at IC+&52; v1.3:
+IC+&35 and IC+&53) and restores it afterwards; a transfer covers bytes 0–254 of that page, so byte 255 has to travel
 separately. With a machine-code driver the pauses cost only 5–20 % of the time; with BASIC
 copying every byte, BASIC and not the I2C bus sets the speed.
 
@@ -392,6 +396,26 @@ shifts, as in MAME), and the Arduino tester measured **17.505 kHz and 1884 bytes
 (v1.2: 16.624 kHz and 1789 bytes/s) with 100 echo transfers without errors. This is about as
 fast as I2C gets within one 256-byte page.
 
+## Version 1.4: interrupts on again
+
+v1.4 (252 bytes, same page, parameters and use) is v1.3 with one fix. Like SERIN/SEROUT, the
+routine switches the interrupts off with `RIE` at its start, because an interrupt would break
+the timing of SCL and SDA. BASIC itself runs with the interrupts on: the PC-1500 ROM switches
+them on after reset and after each of its own short `RIE` sections, and waits for a key with
+`SIE` + `HLT`. v1.0 to v1.3 returned with the interrupts still off, which did no harm in
+practice, because the next ROM routine with `SIE` (e.g. the next display output) switched them
+on again and the LH5811 keeps an interrupt request until it is served. v1.4 does it itself:
+`SIE` just before the final `RTN`, on every path (OK, NACK and SDA stuck low).
+
+v1.3 had only one free byte in the page, so the two `NOP`s after the read address became one
+`DCS (X)`: 1 byte and 13 cycles instead of 2 × 5. It only reads the ROM byte at &F00D into A
+and the flags, which are not used at that point. The window for a microcontroller device
+after the read address grows from about 74 to about 77 µs; all other times and the speed are
+those of v1.3. The two `CPI` operands that every call rewrites are now at IC+&6A and IC+&EF.
+In the simulator v1.4 passes all transactions and edge tests of v1.3, plus two new checks on
+every call: interrupts off during every port access, and on again after the return (v1.3
+fails the second one on every call, as expected).
+
 ## How it works
 
 - **SCL:** `ORI`/`ANI` on port C (&F008, bit 7) in the ME1 space, as SEROUT drives TX.
@@ -413,7 +437,7 @@ fast as I2C gets within one 256-byte page.
 - The routine returns with C=1 and the result in X, so BASIC stores it in the variable of
   `CALL IC,E`, as SERIN does with the number of received characters.
 
-Sources: `asm/i2c_v1.0.asm` to `asm/i2c_v1.3.asm` (LH5801 assembler,
+Sources: `asm/i2c_v1.0.asm` to `asm/i2c_v1.4.asm` (LH5801 assembler,
 comments in English) and the listings `asm/i2c_v1.x.lst` (with the bytes of every instruction). Symbols that the installer fills in: IP (page
 of the code), TP and RP (pages of the TX and RX buffers), BM and DB (bit mask of SDA in port B).
 

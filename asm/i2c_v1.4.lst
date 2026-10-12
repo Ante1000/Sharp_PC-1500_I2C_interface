@@ -1,0 +1,205 @@
+; I2C v1.4 - listing (adresy wzgledem IC = RAM+&400), 252 bajtow
+;
+                    ; =====================================================================
+                    ; I2C v1.4 - software I2C master for the Sharp PC-1500(A), fastest version
+                    ; SCL = PC7 (pin 10, &F008 bit 7), SDA = PB2 (CMT-IN, pin 27) or PB0
+                    ; (pin 9) - chosen in the installer. CPU LH5801 @ 1.3 MHz.
+                    ;
+                    ; Call, parameters, results and memory unchanged from v1.0:
+                    ;   POKE IA, D, W, R : CALL IC   or   CALL IC,E   (E = result)
+                    ;   IC = RAM+&400, IA = RAM+&4FC (D, W, R), IS = RAM+&4FF (result),
+                    ;   TX = RAM+&300, RX = RAM+&200.
+                    ;   Result: 0 = OK, 1 = no ACK after the address, 2 = no ACK after a data
+                    ;   byte, 3 = SDA stays low (transaction not started).
+                    ;
+                    ; From v1.1 (times from the MAME cycle table):
+                    ; 1. A 0 bit when sending is the single instruction ORI #(X),BM (SDA =
+                    ;    output), without clearing the OPB latch and without SJP/RTN. The SDA
+                    ;    latch is always 0 when SEND starts a byte: after START, SDA0 clears
+                    ;    it, and after a data byte the ACK read (SDA = 0) writes 0 into the
+                    ;    latch in the MAME model; in the model of a real latch the 0 stays
+                    ;    from SDA0. After a NACK comes STOP, which clears the latch itself.
+                    ; 2. The send loop has two states: H (SDA = 1) and L (SDA = 0). SDA only
+                    ;    changes when a bit differs from the previous one, and a byte that
+                    ;    ends with a 1 bit no longer has to release SDA before the ACK.
+                    ; 3. Receiving: X points to OPB (&F00F), so reading SDA is BII #(X),BM
+                    ;    (14 cycles instead of 20). A 0 bit needs no REC: C = 0 inside the
+                    ;    loop, because the sentinel only leaves into C after the 8th bit.
+                    ;    The receiver ACK uses the absolute address &F00D, without switching X.
+                    ; 4. One routine ADDR sends the address (for write and read) and runs
+                    ;    straight into SEND. START contains the SDA0 code (without SJP/RTN),
+                    ;    and STOP calls SDA0 inside START.
+                    ; From v1.2 (sending about 1.15 times faster than in v1.1):
+                    ; 5. The end-of-byte test (sentinel, A = 0) only after a 1 bit: the
+                    ;    sentinel is a one, so after a 0 bit (C = 0) it cannot be the end.
+                    ; 6. SEND sends the address and all W bytes from TX in one loop, without
+                    ;    SJP/RTN per byte; the ACK without SEC/REC. The read address ends the
+                    ;    loop at once, because UL = W (FREE clears UL, after a write UL = W).
+                    ; 7. The path "state L, bit 1" goes straight into the SCL clock of state H.
+                    ; 8. After START the address starts in state L (SDA already = 0).
+                    ; New in v1.3 (sending about 1.07 times faster than in v1.2):
+                    ; 9. No BII A,&FF: the end of a byte (A = 0) is shown by the Z flag set by
+                    ;    SHL/ROL. This NEEDS a CPU whose SHL and ROL set Z (MAME does so; the
+                    ;    LH5801 manual says otherwise) - the v1.3 installer tests this first
+                    ;    and does not install the code without it.
+                    ; 10. Counters: the instruction CPI UL,n (7 cycles) instead of LDA UL +
+                    ;    CPA (IP,&FD/&FE) (18 cycles); every call writes n (W and R) into the
+                    ;    code (FREE, RD).
+                    ; New in v1.4 (same speed as v1.3, 252 bytes):
+                    ; 11. Interrupts are switched on again (SIE) before the return to BASIC.
+                    ;    The code switches them off at its start (RIE), because an interrupt
+                    ;    would break the timing of SCL and SDA; BASIC itself runs with
+                    ;    interrupts on (the ROM does SIE after its own short RIE sections),
+                    ;    so v1.0..v1.3 left them off until the ROM switched them on again.
+                    ; 12. To make room for SIE, the two NOPs after the read address are one
+                    ;    DCS (X) (1 byte, 13 cycles instead of 2 x 5): it only reads the ROM
+                    ;    byte at &F00D (ME0) into A and the flags, which are not used there
+                    ;    (REC and LDI A,1 follow).
+                    ; After the read address SCL stays low for about 77 us, so that the
+                    ; device (e.g. an Arduino) has time to prepare its data.
+                    ;
+                    ; Lines (as in v1.0):
+                    ;   SCL: port C has outputs only, PC7 drives SCL push-pull, no
+                    ;        "clock stretching".
+                    ;   SDA: open drain emulated with the direction register DDB (&F00D):
+                    ;        SDA = 1: DDB bit = 0 (input), the resistor makes the high level;
+                    ;        SDA = 0: DDB bit = 1 (output) with output latch OPB = 0.
+                    ; Every line change is a separate ORI/ANI instruction (>= 17 cycles =
+                    ; 13 us), so the minimum I2C times (4.7 us) hold without delay loops.
+                    ;
+                    ; Registers: X = &F00D (DDB), while receiving &F00F (OPB); Y = &F008
+                    ; (port C); U = buffer pointer; A = data. Bit counter: a sentinel bit.
+                    ; End of a byte: the Z flag after SHL/ROL (see point 9).
+                    ;
+                    ; Load address: IC = RAM+&400 (&4400 on a PC-1500A), followed by the
+                    ; parameters D, W, R and the result (IA = RAM+&4FC .. IS = RAM+&4FF).
+                    ; Symbols filled in by BASIC: IP = page of the code (SJP addresses and
+                    ; parameters), TP/RP = pages of the TX/RX buffers, BM = bit mask of SDA
+                    ; in port B (4 = PB2, 1 = PB0), DB = 255-BM.
+                    ; =====================================================================
+00  FD BE                   RIE                     ; no interrupts
+02  48 F0                   LDI  XH,&F0
+04  4A 0D                   LDI  XL,&0D             ; X = &F00D (DDB: direction of SDA)
+06  58 F0                   LDI  YH,&F0
+08  5A 08                   LDI  YL,&08             ; Y = &F008 (port C: SCL = PC7)
+0A  FD 49 DB                ANI  #(X),DB            ; SDA = 1 (released)
+0D  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+10  6A 09                   LDI  UL,9               ; SDA = 0: up to 10 SCL pulses
+12  FD ED F0 0F BM  BUSY:   BII  #(&F00F),BM        ; SDA = 1 -> bus free
+17  89 0C                   BZR+ FREE
+19  FD 59 7F                ANI  #(Y),&7F           ; SCL pulse: a device that holds
+1C  FD 5B 80                ORI  #(Y),&80           ; SDA sends its next bit
+1F  88 0F                   LOP  UL,BUSY
+21  B5 03                   LDI  A,3                ; SDA still 0: result 3, no START/STOP
+23  8E 74                   BCH+ EXIT
+25  6A 00           FREE:   LDI  UL,0               ; UL = 0 (= W when reading without a write)
+27  A5 IP FD                LDA  (IP,&FD)           ; W
+2A  AE IP EF                STA  (IP,WCMP+1)        ; W into the instruction CPI UL,W in SEND
+2D  89 05                   BZR+ WR
+2F  A5 IP FE                LDA  (IP,&FE)           ; R
+32  89 12                   BZR+ RD                 ; W = 0, R > 0: read at once
+34  68 TP           WR:     LDI  UH,TP              ; U = TX
+36  F9                      REC                     ; C = 0: address for writing
+37  BE IP B5                SJP  ADDR               ; address, then W bytes from TX
+3A  83 05                   BCS+ WEND               ; C = 1: everything acknowledged
+3C  24                      LDA  UL                 ; no ACK: UL = 0 -> after the address
+3D  8B 4B                   BZS+ NAKA
+3F  8E 4D                   BCH+ NAKD
+41  A5 IP FE        WEND:   LDA  (IP,&FE)           ; R
+44  8B 40                   BZS+ OK
+46  AE IP 6A        RD:     STA  (IP,RCMP+1)        ; A = R (from FREE or WEND) into CPI UL,R
+49  FB                      SEC                     ; C = 1: address for reading (UL = W, so SEND
+4A  BE IP B5                SJP  ADDR               ; ends after the address alone)
+4D  81 3B                   BCR+ NAKA
+4F  0C                      DCS  (X)                ; time for the device: SCL low for about 77 us
+                                                    ; (1-byte delay of 13 cycles, see point 12)
+50  F9                      REC                     ; C = 0: the receive loop needs this
+51  68 RP                   LDI  UH,RP
+53  6A 00                   LDI  UL,0               ; U = RX
+55  4A 0F                   LDI  XL,&0F             ; X = &F00F (OPB: read SDA)
+57  B5 01           RBYTE:  LDI  A,1                ; sentinel: leaves into C after 8 bits
+59  FD 5B 80        RBIT:   ORI  #(Y),&80           ; SCL = 1
+5C  FD 4D BM                BII  #(X),BM            ; read SDA
+5F  8B 01                   BZS+ R0
+61  FB                      SEC                     ; bit 1 (C = 0 in the loop, so bit 0 needs no REC)
+62  DB              R0:     ROL                     ; A = A*2 + bit
+63  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+66  91 0F                   BCR- RBIT               ; C = 1: the sentinel left, byte complete
+68  61                      SIN  U                  ; store, U++
+69  6E 00           RCMP:   CPI  UL,0               ; UL - R (R written in RD): C = 1 for the last one
+6B  83 08                   BCS+ R9                 ; last one: NACK (SDA = 1)
+6D  FD EB F0 0D BM          ORI  #(&F00D),BM        ; ACK: SDA = output ...
+72  FD 49 DB                ANI  #(X),DB            ; ... latch OPB = 0
+75  FD 5B 80        R9:     ORI  #(Y),&80           ; 9th SCL pulse (ACK or NACK)
+78  FD 59 7F                ANI  #(Y),&7F           ; (ORI/ANI do not change C)
+7B  83 07                   BCS+ RDONE
+7D  FD E9 F0 0D DB          ANI  #(&F00D),DB        ; release SDA; C = 0
+82  9E 2D                   BCH- RBYTE
+84  4A 0D           RDONE:  LDI  XL,&0D             ; X = DDB
+86  B5 00           OK:     LDI  A,0
+88  8E 06                   BCH+ STOP
+8A  B5 01           NAKA:   LDI  A,1
+8C  8E 02                   BCH+ STOP
+8E  B5 02           NAKD:   LDI  A,2
+90  BE IP A9        STOP:   SJP  SDA0               ; SDA = 0 while SCL = 0
+93  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+96  FD 49 DB                ANI  #(X),DB            ; SDA 0 -> 1 while SCL = 1: STOP
+99  AE IP FF        EXIT:   STA  (IP,&FF)           ; IS = result
+9C  0A                      STA  XL
+9D  48 00                   LDI  XH,0               ; X = result ...
+9F  FB                      SEC                     ; ... C=1: BASIC copies X into E of CALL IC,E
+A0  FD 81                   SIE                     ; interrupts on again, as BASIC had them
+A2  9A                      RTN
+                    ;
+                    ; START: SDA 1 -> 0 while SCL = 1, then SCL = 0 (A and C unchanged).
+                    ; SDA0 (entry from STOP while SCL = 0): SDA = 0 (output, latch 0), and
+                    ; the second SCL = 0 then changes nothing.
+A3  FD 49 DB        START:  ANI  #(X),DB            ; SDA = 1
+A6  FD 5B 80                ORI  #(Y),&80           ; SCL = 1
+A9  FD 4B BM        SDA0:   ORI  #(X),BM            ; SDA = output ...
+AC  FD E9 F0 0F DB          ANI  #(&F00F),DB        ; ... latch OPB = 0: SDA 1 -> 0 (START)
+B1  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+B4  9A                      RTN
+                    ;
+                    ; ADDR: START (or repeated START), then the byte D*2+C and further bytes from TX.
+                    ; After START SDA = 0, so sending starts in state L.
+B5  BE IP A3        ADDR:   SJP  START
+B8  A5 IP FC                LDA  (IP,&FC)           ; D
+BB  DB                      ROL                     ; D*2 + C (0 write, 1 read)
+BC  FB                      SEC
+BD  DB                      ROL                     ; C = bit 7, sentinel 1 -> bit 0
+BE  8E 0A                   BCH+ LDEC
+                    ;
+                    ; SEND: sends the byte in A, then further bytes from TX (LIN U), until UL = W.
+                    ; Result: C = 1 everything acknowledged, C = 0 no ACK (UL tells after which).
+                    ; Two states: H (SDA = 1) and L (SDA = 0); only a bit that differs from the
+                    ; previous one changes SDA. The end of a byte (sentinel: A = 0, Z flag after
+                    ; SHL/ROL) only counts after a 1 bit - after a 0 bit (C = 0) it cannot be the
+                    ; sentinel. SDA latch = 0 (see v1.1), so SDA = 0 just means SDA = output.
+C0  FD 4B BM        H0:     ORI  #(X),BM            ; H, bit 0: SDA = 0 -> state L
+C3  FD 5B 80        LC:     ORI  #(Y),&80           ; SCL pulse
+C6  FD 59 7F                ANI  #(Y),&7F
+C9  D9                      SHL                     ; C = next bit
+CA  91 09           LDEC:   BCR- LC                 ; L, bit 0: SDA unchanged
+CC  8B 10                   BZS+ SACKL              ; C = 1 and Z = 1: sentinel, end of the byte
+CE  FD 49 DB                ANI  #(X),DB            ; L, bit 1: SDA = 1 -> state H
+D1  FD 5B 80        HC:     ORI  #(Y),&80           ; SCL pulse
+D4  FD 59 7F                ANI  #(Y),&7F
+D7  D9                      SHL
+D8  91 1A           HDEC:   BCR- H0                 ; H, bit 0
+DA  99 0B                   BZR- HC                 ; H, bit 1: SDA unchanged
+DC  8E 03                   BCH+ SACKH              ; sentinel in state H: SDA already released
+DE  FD 49 DB        SACKL:  ANI  #(X),DB            ; release SDA: the device sends the ACK
+E1  FD 5B 80        SACKH:  ORI  #(Y),&80           ; 9th SCL pulse
+E4  FD ED F0 0F BM          BII  #(&F00F),BM        ; ACK = 0 (the read clears the latch in the MAME model)
+E9  89 0C                   BZR+ SNAK
+EB  FD 59 7F                ANI  #(Y),&7F           ; SCL = 0
+EE  6E 00           WCMP:   CPI  UL,0               ; W bytes sent? (W written in FREE; equal: C = 1)
+F0  8B 09                   BZS+ SDONE
+F2  65                      LIN  U                  ; A = byte, U++
+F3  FB                      SEC
+F4  DB                      ROL                     ; C = bit 7, sentinel 1 -> bit 0
+F5  9E 1F                   BCH- HDEC               ; after the ACK SDA is released: state H
+F7  FD 59 7F        SNAK:   ANI  #(Y),&7F           ; SCL = 0
+FA  F9                      REC                     ; C = 0: no ACK
+FB  9A              SDONE:  RTN

@@ -1,7 +1,7 @@
 # Help: test program `pc1500_i2c_arduino_test-v1.0` (PC-1500 ↔ Arduino UNO over I2C)
 
 The BASIC program `Basic/pc1500_i2c_arduino_test-v1.0.txt` tests the I2C connection between a
-Sharp PC-1500(A) with **I2C v1.3** and an **Arduino UNO + LCD Keypad Shield** running the sketch
+Sharp PC-1500(A) with **I2C v1.4** (or v1.3) and an **Arduino UNO + LCD Keypad Shield** running the sketch
 `arduino/PC1500_I2C_Slave/PC1500_I2C_Slave.ino`.
 
 **The PC-1500 is the MASTER**, because the I2C routine can only be a master. **The Arduino is
@@ -80,16 +80,18 @@ optional:  A5 ──[ 4.7k ]── 5V      A4 ──[ 4.7k ]── 5V
 1. **Upload the sketch** `PC1500_I2C_Slave.ino` to the UNO (Arduino IDE, board "Arduino Uno").
    The LCD shows "I2C slave 0x42". If the screen is blank, adjust the contrast with the blue
    potentiometer on the shield.
-2. **Install I2C v1.3 on the PC-1500:**
+2. **Install I2C v1.4 on the PC-1500:**
    - in PRO mode enter `NEW0`, then `NEW &4500` (PC-1500A; other values are in the table in the
      [README](README.md#memory));
-   - type in the installer `Basic/pc1500_i2c_installer-v1.3.txt` and `RUN` it. It first tests
-     the CPU; if it shows "CPU: …, USE I2C V1.2", your LH5801 cannot run v1.3: use
+   - load the installer from `wav/i2c_v1.4.wav` with `CLOAD` (name `I2CV1.4`) or type in
+     `Basic/pc1500_i2c_installer-v1.4.txt`, and `RUN` it. It first tests the CPU; if it shows
+     "CPU: …, USE I2C V1.2", your LH5801 cannot run v1.4: use
      `Archive/pc1500_i2c_installer-v1.2.txt` instead, the test program works with it unchanged;
    - when asked for the SDA port, press ENTER (PB2).
 3. **Run the scanner of the installer** (`RUN 500`). It must find a device at **&42**.
 4. **Enter `NEW` in PRO mode** to remove the installer. The I2C code stays in memory.
-5. **Type in the test program** `Basic/pc1500_i2c_arduino_test-v1.0.txt` and `RUN` it.
+5. **Load the test program** from `wav/test.wav` (name `TEST`) or type in
+   `Basic/pc1500_i2c_arduino_test-v1.0.txt`, and `RUN` it.
    At the start it checks:
    - that the I2C code is in memory (first bytes &FD &BE). If not, it shows
      "I2C NOT INSTALLED";
@@ -131,7 +133,7 @@ with the ENTER key.
 
 | Message | Meaning | What to check |
 |---|---|---|
-| `I2C NOT INSTALLED` | there is no I2C code at RAM+&400 | install I2C v1.3 (installer, then `NEW`) |
+| `I2C NOT INSTALLED` | there is no I2C code at RAM+&400 | install I2C v1.4 (installer, then `NEW`) |
 | `I2C ERROR E=1 (1=NO ACK)` | the Arduino did not acknowledge the address &42 | wires, direction of the diode, power of the UNO, PC-1500 removed from the CE-150. For 1–2 s after a reset of the UNO (bootloader) no answer is normal |
 | `I2C ERROR E=2` | the Arduino did not accept a data byte | a write longer than 32 bytes (buffer of the Wire library) |
 | `I2C ERROR E=3` | SDA is low all the time | SDA shorted to ground, UNO without power, no pull-up |
