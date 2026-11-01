@@ -41,6 +41,8 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 |---|---|
 | `Basic/pc1500_i2c_installer-v1.4.txt` | BASIC installer of the I2C master v1.4, with a CPU test, a bus scanner and a read/write test |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program for the Arduino UNO tester (menu, prompts in English) |
+| `Basic/pc1500_i2c_lcd_clock-v1.0.txt` | date and time of the PC-1500 clock on a 16x2 HD44780 LCD with a PCF8574 I2C backpack (address &27 or &3F); tape recording `wav/lcd_clock.wav` (name `LCDCLK`); set the clock first with `TIME = MMDDHH.MMSS` |
+| `tools/pc1500_bas2wav.py` | converts a BASIC text file into a tape recording for `CLOAD` (and decodes recordings); format notes in the file header |
 | `wav/i2c_v1.4.wav`, `wav/test.wav` | tape recordings of the installer v1.4 (name `I2CV1.4`) and of the test program (name `TEST`) for `CLOAD` |
 | `Archive/` | installers of I2C v1.0 to v1.3 (with the recording of v1.3), the stand-alone LH5801 flag test and the Polish version of the test program |
 | `asm/` | LH5801 assembler sources and listings of I2C v1.0 to v1.4 |
