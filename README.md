@@ -13,7 +13,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 > PC-1500** with the Arduino UNO tester of this repository: the speed test works and measured
 > an SCL clock of 9.397 kHz and 1011 bytes/s (the simulator gives 9.871 kHz for the same
 > transfer, so the real PC-1500 is about 5 % slower), and the echo test ran 1000 transfers of
-> 1–29 random bytes **without a single error**. Further tests (DS3231, PCF8574, EEPROM) are
+> 1–29 random bytes **without a single error**. Tests with an RTC (DS3231) and an EEPROM are
 > still to be done.
 >
 > **I2C v1.2** (see [below](#version-12-faster-writing)) has also been tested on a real
@@ -23,8 +23,11 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 > test ran 100 transfers without errors, and its installer found that the CPU sets the Z flag
 > on `SHL`/`ROL`, which v1.3 needs. **I2C v1.4** (see [below](#version-14-interrupts-on-again))
 > is v1.3 with one fix: it switches the interrupts on again before it returns to BASIC. Its
-> timing is that of v1.3, so the v1.3 measurements apply to it; v1.4 itself has so far run in
-> the simulator only, like v1.1. Please check the wiring carefully and report your results.
+> timing is that of v1.3, so the v1.3 measurements apply to it (**SCL about 17.5 kHz**). v1.4
+> has also been run on a real PC-1500 with the LCD clock demo (`Basic/pc1500_i2c_lcd_clock-v1.0.txt`):
+> a 16x2 HD44780 LCD with a PCF8574 I2C backpack works, so a real PCF8574 device has been
+> tested. v1.1 has so far run in the simulator only. Please check the wiring carefully and
+> report your results.
 
 | Document | Contents |
 |---|---|
@@ -60,9 +63,10 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
   routine, result code in a BASIC variable.
 - Bus recovery: if a device holds SDA low (for example after a transfer was interrupted), up
   to 10 SCL pulses free the bus before the transaction starts.
-- SCL clock about 10 kHz (measured on a PC-1500: 9.4 kHz on average over a 32-byte write;
-  single clock periods vary between about 60 and 200 µs). I2C has no minimum clock frequency.
-- 241 bytes of code (v1.1 and v1.4: 252 bytes, v1.2 and v1.3: 251 bytes). It uses the same TX/RX buffers as the Software UART, so both can be
+- SCL clock about **17.5 kHz** with v1.3 and v1.4 (measured on a PC-1500: 17.505 kHz on average
+  over a 32-byte write; v1.2: 16.6 kHz, v1.0: 9.4 kHz, where single clock periods vary between
+  about 60 and 200 µs). I2C has no minimum clock frequency.
+- 252 bytes of code in v1.4 (v1.0: 241 bytes, v1.1: 252 bytes, v1.2 and v1.3: 251 bytes). It uses the same TX/RX buffers as the Software UART, so both can be
   installed together but can not operate simultaneously. The UART is not needed for I2C, they are both independent routines.
 
 ## Limitations
@@ -238,6 +242,10 @@ POKE TX, &F0 : POKE IA, &20, 1, 0 : CALL IC, E
 POKE IA, &20, 0, 1 : CALL IC, E : PRINT PEEK RX
 ```
 
+A complete example with a PCF8574 as the I2C backpack of a 16x2 HD44780 LCD: the clock
+`Basic/pc1500_i2c_lcd_clock-v1.0.txt` (recording `wav/lcd_clock.wav`), see
+[QUICK_START.md](QUICK_START.md). It sends a whole line (4 bytes per character) in one `CALL`.
+
 **24C32 / 24C64 EEPROM (address &50, two address bytes).** Write "ABC" at address &0010, then
 read it back. After a write the EEPROM is busy for a few milliseconds and does not answer
 (result 1), so the read is repeated until it answers:
@@ -276,7 +284,7 @@ the same factor the simulator expects about 1510 bytes/s and 14.0 kHz for v1.1.
 
 ### Speed in perspective
 
-With I2C v1.3 a byte takes 9 SCL clocks (8 bits and the ACK), so 17.505 kHz moves 1945 bytes/s
+With I2C v1.3 (v1.4 has the same timing) a byte takes 9 SCL clocks (8 bits and the ACK), so 17.505 kHz moves 1945 bytes/s
 on the wire; the measured 1884 bytes/s include the address byte, START and STOP of a 31-byte
 write.
 
@@ -285,16 +293,16 @@ write.
 | `CLOAD` from cassette (Ben Ryves: about 7 minutes for 5697 bytes) | about 14 | about 7 min |
 | Fast Load from cassette, 4000 baud (Ben Ryves) | about 190 | about 30 s |
 | Software UART, 9600 bps (8N1: 10 bits per byte) | 960 | 6 s |
-| **I2C v1.3**, one 31-byte write (measured) | **1884** | **3 s** |
+| **I2C v1.3 / v1.4**, one 31-byte write (measured with v1.3) | **1884** | **3 s** |
 
-So I2C v1.3 is about 140 times faster than `CLOAD` and about 10 times faster than Fast Load.
+So I2C v1.3 and v1.4 are about 140 times faster than `CLOAD` and about 10 times faster than Fast Load.
 In UART terms, 1884 bytes/s × 10 bits = 18 840 bps, about **19 200 baud**: twice the fastest
 Software UART setting (9600 bps). Reading is slower (0.62 ms per byte, about 1.6 KB/s, like
 16 000 bps).
 
 **Larger files in packets** need pauses between the I2C transactions: the PC-1500 prepares
 and checks the data, the device writes to its SD card, and the PC-1500 asks for the status.
-Estimates for v1.3 on a real PC-1500 (write of n bytes ≈ 0.45 ms + (n + 1) × 0.514 ms; read of
+Estimates for v1.3 and v1.4 on a real PC-1500 (write of n bytes ≈ 0.45 ms + (n + 1) × 0.514 ms; read of
 n bytes ≈ 0.96 ms + n × 0.62 ms; status read ≈ 1.6 ms):
 
 | Driver on the PC-1500 | Packet | Write to the device | Read from the device | 10 KB |
