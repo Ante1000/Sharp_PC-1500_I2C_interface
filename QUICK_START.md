@@ -74,7 +74,7 @@ Pins of the 60-pin connector on the left side of the PC-1500(A):
 | Step | Action |
 |---|---|
 | 1 | In **RUN** mode set the clock of the PC-1500: `TIME = MMDDHH.MMSS` [ENTER] (for example `TIME = 110314.3000` for 3 November, 14:30:00). |
-| 2 | Dock the computer in the CE-150. In **PRO** mode type `CLOAD` [ENTER] (do **not** type `NEW` first: that would remove the I2C code) and play `wav/lcd_clock.wav`. |
+| 2 | Dock the computer in the CE-150. In **PRO** mode type `CLOAD` [ENTER] (do **not** type `NEW0` first: that would remove the I2C code) and play `wav/lcd_clock.wav`. |
 | 3 | Take the computer out of the CE-150 and connect the LCD. Switch it on: the backlight must be on. Adjust the contrast with the potentiometer on the converter. |
 | 4 | Switch to **RUN** mode and type `RUN` [ENTER]. |
 
