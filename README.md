@@ -8,13 +8,13 @@ dedicated interface and without any modification of the computer: **SCL on PC7**
 two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000/Sharp_PC-1500_Software_UART)
 (SERIN/SEROUT). One diode and a few resistors go between the connector and the I2C bus.
 
-> **Status:** I2C v1.0 has been tested in an LH5801 simulator (instruction timings from MAME,
+> **Status:** I2C v1.0 has been first tested in an LH5801 simulator (instruction timings from MAME,
 > two models of the LH5811 port latch, simulated I2C devices). **First test on a real
 > PC-1500** with the Arduino UNO tester of this repository: the speed test works and measured
 > an SCL clock of 9.397 kHz and 1011 bytes/s (the simulator gives 9.871 kHz for the same
 > transfer, so the real PC-1500 is about 5 % slower), and the echo test ran 1000 transfers of
-> 1–29 random bytes **without a single error**. Tests with an RTC (DS3231) and an EEPROM are
-> still to be done.
+> 1–29 random bytes **without a single error**. The version 1.4 works correctly with speed 17.5kHz
+> on real PC-1500A computers. 
 >
 > **I2C v1.2** (see [below](#version-12-faster-writing)) has also been tested on a real
 > PC-1500 with the Arduino tester: **16.624 kHz and 1789 bytes/s** (1.8 times v1.0) and the
