@@ -28,6 +28,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 
 | Document | Contents |
 |---|---|
+| [QUICK_START.md](QUICK_START.md) | short step-by-step guide: install the interface, wire it, run the LCD clock demo |
 | this file | features, connection, installation, use in BASIC, examples |
 | [docs/arduino_tester.md](docs/arduino_tester.md) | test set: Arduino UNO + LCD Keypad Shield as an I2C device, with a test program for the PC-1500 |
 | [HELP_arduino_test.md](HELP_arduino_test.md) | help for the test program `pc1500_i2c_arduino_test-v1.0` with I2C v1.4: wiring, start, menu, error messages, protocol |
