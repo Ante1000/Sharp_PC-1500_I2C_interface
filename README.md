@@ -13,8 +13,8 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 > PC-1500** with the Arduino UNO tester of this repository: the speed test works and measured
 > an SCL clock of 9.397 kHz and 1011 bytes/s (the simulator gives 9.871 kHz for the same
 > transfer, so the real PC-1500 is about 5 % slower), and the echo test ran 1000 transfers of
-> 1–29 random bytes **without a single error**. The version 1.4 works correctly with speed 17.5kHz
-> on real PC-1500A computers. 
+> 1–29 random bytes **without a single error**. The version 1.4 works correctly with increased
+> frequency of 17.5kHz on real PC-1500A computer. 
 >
 > **I2C v1.2** (see [below](#version-12-faster-writing)) has also been tested on a real
 > PC-1500 with the Arduino tester: **16.624 kHz and 1789 bytes/s** (1.8 times v1.0) and the
