@@ -12,8 +12,8 @@ clock on a 16x2 LCD. Details, timing and all options are in [README.md](README.m
 
 ## 1. Install the I2C interface
 
-You need a bare **PC-1500A** (a PC-1500 needs a RAM module) and the recording
-[`wav/i2c_v1.4.wav`](wav/i2c_v1.4.wav) (tape name `I2CV1.4`).
+You need a bare **PC-1500A** (a PC-1500 needs a RAM module). Download the file 
+[`wav/i2c_v1.4.wav`](wav/i2c_v1.4.wav) from this repository.
 
 | Step | Action |
 |---|---|
@@ -22,7 +22,8 @@ You need a bare **PC-1500A** (a PC-1500 needs a RAM module) and the recording
 | 3 | Switch to **RUN** mode and type `RUN` [ENTER]. The installer tests the CPU, then asks for the SDA port: press [ENTER] for **PB2** (pin 27). |
 | 4 | Switch to **PRO** mode and type `NEW` [ENTER]. The I2C code stays in memory. |
 
-The interface is ready. 
+The interface is ready to use. The README.md file describes how to use this I2C interface. 
+
 Other memory configurations (RAM modules): use the `NEW` value from the
 table in [README.md](README.md#memory) instead of `NEW &4500`.
 If the installer shows "USE I2C V1.2", install [`Archive/pc1500_i2c_installer-v1.2.txt`](Archive/pc1500_i2c_installer-v1.2.txt) instead.
@@ -60,8 +61,8 @@ Pins of the 60-pin connector on the left side of the PC-1500(A):
 | LCD module | PC-1500 connector |
 |---|---|
 | GND | pin 52-55 |
-| SCL | pin 10 (diode as above) |
-| SDA | pin 27 (470 ohm as above) |
+| SCL | pin 10 (diode as above, usually can be ommited) |
+| SDA | pin 27 (470 ohm as above, usually can be ommited) |
 | VCC | pin 44-48 (battery line, Vbat) **or** pin 11-12 (Vcc line), see the note below |
 
 > **Power supply.** The backlight draws a lot of current, so the LCD should be supplied
@@ -78,8 +79,9 @@ Pins of the 60-pin connector on the left side of the PC-1500(A):
 | 3 | Take the computer out of the CE-150 and connect the LCD. Switch it on: the backlight must be on. Adjust the contrast with the potentiometer on the converter. |
 | 4 | Switch to **RUN** mode and type `RUN` [ENTER]. |
 
-The LCD shows `INITIALISING...`, then the title `* I2C CLOCK *` for 3 s, then
-the date (`DATE: MM/DD`) and the time (`TIME: HH:MM:SS`). **Any key** stops the program.
+The LCD shows `INITIALISING...`, then the title `* I2C CLOCK *` , then the 
+date (`DATE: MM/DD`) and the time (`TIME: HH:MM:SS`). 
+**Any key** stops the program.
 
 ### Troubleshooting
 
