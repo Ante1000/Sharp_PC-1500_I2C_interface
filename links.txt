@@ -1,0 +1,10 @@
+I2C
+video: https://youtu.be/FU-JZ6eZy-o
+program and info: https://github.com/Ante1000/Sharp_PC-1500_I2C_interface
+
+UART
+video: https://youtu.be/AAmB9hOa9wQ
+program and info: https://github.com/Ante1000/Sharp_PC-1500_Software_UART
+
+Bastions of Retrocomputing (game)
+program and instruction: https://github.com/Ante1000/Sharp_PC-1500_GAME_Bastions_of_Retrocomputing
