@@ -97,7 +97,9 @@ Vcc  pin 12  ──────[ red LED or 3.3V regulator]───────
   voltage is 1.7–3.6 V. Therefore it cannot be powered directly from the 4.7 V Vcc output of
   the PC-1500. A 3.3 V regulator (or a regulator module) is needed, or, more simply, you can use
   a red LED (the forward voltage drop of a red LED is approx. 1.7–2 V, which lowers the supply
-  voltage to a level the BMP280 accepts).   A regulator is the safer solution, but the LED also works.
+  voltage to a level the BMP280 accepts). Instead of LED, 2 or 3 diodes (1N4148) in series can be used
+  (check the resulting voltage for BPP280 with 3 diodes first, if lower than 2V, use 2 diodes). 
+  A regulator is the safer solution, but the LED or diodes in series also work.
 - join the grounds.
 - **SCL:** the diode lets the PC-1500 only pull SCL low; the pull-up of the module makes the high
   level, so the sensor never sees the 5 V of the PC7 output.
