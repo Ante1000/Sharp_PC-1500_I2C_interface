@@ -79,6 +79,14 @@ Vcc  pin 12  ──────[ red LED or 3.3V regulator]───────
 
 ```
 
+<p align="center">
+  <img src="img/bmp280_2.jpg" alt="BMP280 module with the resistor, the diode and the red LED, wired to the 60-pin connector of the PC-1500A" width="420">
+</p>
+
+*The wiring of the example: the BMP280 module with the 470 Ω resistor, the diode and the red LED
+(the lit LED lowers the supply voltage) soldered to its pins, and the four wires going to the
+60-pin connector of the PC-1500A.*
+
 - **Remove the PC-1500(A) from the CE-150 while the I2C bus is in use** (PB2 is the cassette input
   of the CE-150). Load the tape recording with the computer docked, then take it out.
 - **Supply:** the BMP280 is a 3.3 V sensor. It draws little current, approx. 0.2 mA. Its supply
@@ -127,6 +135,13 @@ Vcc  pin 12  ──────[ red LED or 3.3V regulator]───────
 
 Enter 1, 2, 4, 8, or 16. Pressing [ENTER] without entering a value selects the default (1). Any other input (e.g. 0 or 3) will prompt you to try again.
 You can also simply press [ENTER] to accept the default options. See next paragraph.
+
+<p align="center">
+  <img src="img/bmp280_1.jpg" alt="PC-1500A showing the question temp oversampling ? with the BMP280 module connected" width="760">
+</p>
+
+*The PC-1500A in RUN mode asking `temp oversampling ?`, with the BMP280 module connected on the
+left.*
 4. **Measurement loop.** The program measures once, shows `Temperature = nn.nn C` for 2 seconds,
    then `Pressure = nnnn.nn hPa` for 2 seconds, and measures again.
 5. **Stopping.** A key that is pressed when the cycle ends stops the program with `STOPPED`; the
