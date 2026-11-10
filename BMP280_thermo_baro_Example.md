@@ -1,5 +1,9 @@
 # Thermometer and barometer with a BMP280 on the Sharp PC-1500(A)
 
+<p align="center">
+  <img src="img/bmp280_0.jpg" alt="Temperature and pressure over I2C: BMP280 sensor connected to the Sharp PC-1500A, display showing Temp= 22.40 C Press= 1013.25hPa" width="900">
+</p>
+
 A BASIC program for the PC-1500(A) that reads a **Bosch BMP280** pressure and temperature sensor
 over the [I2C interface](README.md) (SCL on PC7, SDA on PB2) and shows the results on the display,
 first the temperature and then the pressure:
