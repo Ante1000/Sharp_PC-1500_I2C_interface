@@ -33,6 +33,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 |---|---|
 | [QUICK_START.md](QUICK_START.md) | short step-by-step guide: install the interface, wire it, run the LCD clock demo |
 | this file | features, connection, installation, use in BASIC, examples |
+| [BMP280_thermo_baro_Example.md](BMP280_thermo_baro_Example.md) | thermometer and barometer with a BMP280 sensor: wiring, loading, use, settings, how the program works |
 | [docs/arduino_tester.md](docs/arduino_tester.md) | test set: Arduino UNO + LCD Keypad Shield as an I2C device, with a test program for the PC-1500 |
 | [HELP_arduino_test.md](HELP_arduino_test.md) | help for the test program `pc1500_i2c_arduino_test-v1.0` with I2C v1.4: wiring, start, menu, error messages, protocol |
 | [docs/design_notes.md](docs/design_notes.md) | ideas for the next steps: ESP32 as Wi-Fi bridge and program "disk", I2C compared with SPI 3-wire and other 2-wire protocols, speed measurements in the simulator |
@@ -46,8 +47,8 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 | `Basic/pc1500_i2c_installer-v1.4.txt` | BASIC installer of the I2C master v1.4, with a CPU test, a bus scanner and a read/write test |
 | `Basic/pc1500_i2c_arduino_test-v1.0.txt` | PC-1500 test program for the Arduino UNO tester (menu, prompts in English) |
 | `Basic/pc1500_i2c_lcd_clock-v1.0.txt` | date and time of the PC-1500 clock on a 16x2 HD44780 LCD with a PCF8574 I2C backpack (address &27 or &3F); tape recording `wav/lcd_clock.wav` (name `LCDCLK`); set the clock first with `TIME = MMDDHH.MMSS` |
-| `Basic/pc1500_bmp280-v1.3.txt` | thermometer and barometer with a BMP280 sensor (address &77), forced mode, selectable oversampling and IIR filter; tape recording `wav/bmp280_v1.3.wav` (name `BMP280`); see [the BMP280 example](#example-bmp280-thermometer-and-barometer) |
-| `tools/pc1500_bas2wav.py` | converts a BASIC text file into a tape recording for `CLOAD` (and decodes recordings); format notes in the file header. It knows only the keywords of the recorded programs, see the [note](#example-bmp280-thermometer-and-barometer) in the BMP280 example |
+| `Basic/pc1500_bmp280-v1.3.txt` | thermometer and barometer with a BMP280 sensor (address &77), forced mode, selectable oversampling and IIR filter; tape recording `wav/bmp280_v1.3.wav` (name `BMP280`); see [BMP280_thermo_baro_Example.md](BMP280_thermo_baro_Example.md) |
+| `tools/pc1500_bas2wav.py` | converts a BASIC text file into a tape recording for `CLOAD` (and decodes recordings); format notes in the file header. It knows only the keywords of the recorded programs (for example no `USING` and no `ABS`) |
 | `wav/i2c_v1.4.wav`, `wav/test.wav` | tape recordings of the installer v1.4 (name `I2CV1.4`) and of the test program (name `TEST`) for `CLOAD` |
 | `wav/lcd_clock.wav`, `wav/bmp280_v1.3.wav` | tape recordings of the LCD clock (name `LCDCLK`) and of the BMP280 thermometer/barometer (name `BMP280`) |
 | `QUICK_START.md`, `HELP_arduino_test.md`, `links.txt` | quick start guide, help for the Arduino test program, links to the videos and to the other repositories |
@@ -249,9 +250,6 @@ A complete example with a PCF8574 as the I2C backpack of a 16x2 HD44780 LCD: the
 `Basic/pc1500_i2c_lcd_clock-v1.0.txt` (recording `wav/lcd_clock.wav`), see
 [QUICK_START.md](QUICK_START.md). It sends a whole line (4 bytes per character) in one `CALL`.
 
-A sensor example, a thermometer and barometer with a BMP280: see
-[Example: BMP280 thermometer and barometer](#example-bmp280-thermometer-and-barometer).
-
 **24C32 / 24C64 EEPROM (address &50, two address bytes).** Write "ABC" at address &0010, then
 read it back. After a write the EEPROM is busy for a few milliseconds and does not answer
 (result 1), so the read is repeated until it answers:
@@ -325,90 +323,15 @@ IC+&35 and IC+&53) and restores it afterwards; a transfer covers bytes 0–254 o
 separately. With a machine-code driver the pauses cost only 5–20 % of the time; with BASIC
 copying every byte, BASIC and not the I2C bus sets the speed.
 
-## Example: BMP280 thermometer and barometer
+## Example programs
 
-`Basic/pc1500_bmp280-v1.3.txt` (tape recording `wav/bmp280_v1.3.wav`, name `BMP280`) measures the
-temperature and the air pressure with a **Bosch BMP280** sensor and shows them in turn on the
-display of the PC-1500(A):
-
-```
-Temperature = 25.08 C
-Pressure = 1006.53 hPa
-```
-
-Each text stays for about 2 seconds, then the next measurement starts. Any key stops the program
-after the display. The sensor is read in **forced mode** (one measurement on request), and the
-temperature and pressure are calculated with the floating-point compensation formulas from the
-BMP280 datasheet (appendix 8.1). With the sample values of the datasheet (page 23) the same
-calculation in the 10-digit arithmetic of the PC-1500 gives 25.08 °C and 1006.53 hPa.
-
-> **Status:** version 1.3 of the program works on a real PC-1500(A) with I2C v1.4 and a BMP280.
-
-### What you need
-
-- the I2C interface v1.4 installed (see [Installation](#installation); `NEW &4500` on a PC-1500A),
-  wired as in [Connection](#connection),
-- a **BMP280 module** (I2C, not SPI) at address **&77**: the pins CSB and SDO of the sensor go to
-  VDDIO (many modules do this already). With SDO connected to GND the address is &76: change
-  `D = &77` in line 30 of the program,
-- pull-up resistors on SCL and SDA only if the module has none (see [Connection](#connection)).
-
-A bare BMP280 works at 3.3 V (1.71–3.6 V). The diode on SCL keeps 5 V away from it. For SDA see
-[How it works](#how-it-works) and [docs/design_notes.md](docs/design_notes.md): if the real
-LH5811 behaves like the MAME model, PB2 drives SDA high for about 18 µs a few times per
-transaction, and a 3.3 V sensor then gets 2–3 mA through its protection diode (limited by the
-470 Ω resistor). A BSS138 level converter on SDA avoids this.
-
-### Use
-
-1. Install the I2C interface as described in [Installation](#installation). The I2C code stays
-   in memory after `NEW`.
-2. Load the program with `CLOAD` (play `wav/bmp280_v1.3.wav`) or type in
-   `Basic/pc1500_bmp280-v1.3.txt`, and `RUN` it in RUN mode.
-3. The program shows `Initialising...`: it checks that I2C is installed, reads the chip ID
-   (register &D0: &58 for the BMP280; the program also accepts &56, &57 and &60, the BME280),
-   makes a soft reset (&E0 ← &B6) and reads the 24 calibration bytes (from &88).
-4. It asks three questions. **Answer 1, 2, 4, 8 or 16; ENTER means 1:**
-
-   | Question | Meaning |
-   |---|---|
-   | `temp oversampling ?` | oversampling of the temperature (×1 … ×16) |
-   | `Pres oversampling ?` | oversampling of the pressure (×1 … ×16) |
-   | `IR Filtering ?` | coefficient of the IIR filter; 1 = filter off |
-
-   A wrong answer (for example 0 or 3) is asked again. More oversampling and a stronger filter
-   mean less noise but a longer measurement (the datasheet gives a maximum of 43.2 ms for
-   pressure ×16 with temperature ×2, on top of the time BASIC needs). The datasheet recommends temperature ×1 for pressure ×1…×8 and ×2 for
-   pressure ×16 (for example "indoor navigation": pressure ×16, temperature ×2, filter 16;
-   "weather monitoring": ×1, ×1, filter off). The IIR filter keeps its memory between the
-   forced measurements, so with a strong filter the first readings need several measurements to
-   settle.
-5. The program writes the filter into the `config` register (&F5), then repeats: it starts a
-   measurement by writing `ctrl_meas` (&F4) with mode `01` (forced), waits until the `measuring`
-   bit of the `status` register (&F3) is 0, reads the six data bytes &F7…&FC in one burst,
-   calculates and displays them.
-
-Codes written to the registers (for reference):
-
-| Answer | 1 | 2 | 4 | 8 | 16 |
-|---|---|---|---|---|---|
-| `osrs_t`, `osrs_p` (&F4) | 001 | 010 | 011 | 100 | 101 |
-| `filter` (&F5, bits 4–2) | 000 (off) | 001 | 010 | 011 | 100 |
-
-Error messages: `I2C NOT INSTALLED` (the I2C code is not in memory), `I2C ERROR E=n` (the
-result code of the `CALL`, see the table in [Use in your programs](#use-in-your-programs);
-E=1 means that nothing answers at &77), `BAD CHIP ID n` (a different chip) and
-`BMP280 TIMEOUT` (the sensor keeps the `measuring` bit set).
-
-### Notes on the program
-
-- The program is about 2.7 KB; it does not fit into a PC-1500 with 2 KB of RAM.
-- **No `USING` and no `ABS`:** `tools/pc1500_bas2wav.py` has no tape code for these keywords and
-  would write them as plain letters, which gives `ERROR 1`. The program therefore builds the
-  text `nn.nn` itself (subroutine at line 850) and takes the absolute value with `IF`. If you
-  type the program in by hand you can use `PRINT USING` instead.
-- Only the temperature and pressure are used. The BME280 (chip ID &60) has a humidity sensor too,
-  which this program does not read.
+- **Clock on an LCD:** date and time of the PC-1500 on a 16x2 HD44780 LCD with a PCF8574 I2C
+  backpack: `Basic/pc1500_i2c_lcd_clock-v1.0.txt`, tape recording `wav/lcd_clock.wav`. Step by step
+  in [QUICK_START.md](QUICK_START.md).
+- **Thermometer and barometer with a BMP280:** temperature and pressure of a Bosch BMP280 sensor
+  on the display, with selectable oversampling and IIR filter: `Basic/pc1500_bmp280-v1.3.txt`,
+  tape recording `wav/bmp280_v1.3.wav`. Full description in
+  [BMP280_thermo_baro_Example.md](BMP280_thermo_baro_Example.md).
 
 ## Version 1.1: faster
 
