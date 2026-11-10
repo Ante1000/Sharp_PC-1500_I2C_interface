@@ -5,7 +5,7 @@ i2c_v1.0.asm / .lst      I2C master, 241 bytes, loaded at RAM+&400 (&4400 on a P
                          parameters D, W, R and the result at RAM+&4FC..&4FF
                          (installer Archive/pc1500_i2c_installer-v1.0.txt); tested on hardware
 i2c_v1.1.asm / .lst      faster version, 252 bytes, same address, parameters and use
-                         (installer Archive/pc1500_i2c_installer-v1.1.txt); simulator only
+                         (installer Archive/pc1500_i2c_installer-v1.1.txt); tested on hardware
 i2c_v1.2.asm / .lst      faster sending, 251 bytes, same use
                          (installer Archive/pc1500_i2c_installer-v1.2.txt); tested on hardware
 i2c_v1.3.asm / .lst      fastest version, 251 bytes, same use; needs SHL/ROL that set Z

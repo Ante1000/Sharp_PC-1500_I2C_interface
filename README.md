@@ -26,7 +26,7 @@ two pins as the [Software UART for Sharp PC-1500(A)](https://github.com/Ante1000
 > timing is that of v1.3, so the v1.3 measurements apply to it (**SCL about 17.5 kHz**). v1.4
 > has also been run on a real PC-1500 with the LCD clock demo (`Basic/pc1500_i2c_lcd_clock-v1.0.txt`):
 > a 16x2 HD44780 LCD with a PCF8574 I2C backpack works, so a real PCF8574 device has been
-> tested. v1.1 has so far run in the simulator only. Please check the wiring carefully and
+> tested. v1.1 has been run on a real PC-1500 as well. Please check the wiring carefully and
 > report your results.
 
 | Document | Contents |
@@ -342,9 +342,7 @@ temperature and pressure are calculated with the floating-point compensation for
 BMP280 datasheet (appendix 8.1). With the sample values of the datasheet (page 23) the same
 calculation in the 10-digit arithmetic of the PC-1500 gives 25.08 °C and 1006.53 hPa.
 
-> **Status:** written from the BMP280 datasheet, tested in a simulation of the calculation and of
-> the tape format. Not yet confirmed on a real PC-1500 with v1.3 of the program. Please report
-> your results.
+> **Status:** version 1.3 of the program works on a real PC-1500(A) with I2C v1.4 and a BMP280.
 
 ### What you need
 
@@ -437,9 +435,8 @@ fills the page up to the parameters (252 bytes, A0+&400 … A0+&4FB). What makes
 
 v1.1 was checked in the same simulator as v1.0: 11264 transactions in all combinations of
 latch model, cycle/flag table, SDA port (PB2/PB0), initial port contents, device hold time and
-RAM base, plus mutation tests (10 deliberate faults in the code, all detected). Its first test
-on hardware is still to do: install v1.1 instead of v1.0 and run the Arduino tester (speed
-test about 14 kHz and 1500 B/s expected, echo test without errors).
+RAM base, plus mutation tests (10 deliberate faults in the code, all detected). v1.1 also
+runs on a real PC-1500.
 
 ## Version 1.2: faster writing
 
