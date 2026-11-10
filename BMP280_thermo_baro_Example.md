@@ -74,7 +74,6 @@ PB2  pin 27  ─────────[ 470 ohm]──┬───────
 GND  pin 55  ───────────────────────────────────────────  GND
                                                        
 Vcc  pin 12  ──────[ red LED or 3.3V regulator]─────────  VCC 3V
-                                                          VCC  ← own supply of the module
                                                           CSB  ← VCC (selects I2C)
                                                           SDO  ← VCC: selects address &77 
 
@@ -82,10 +81,11 @@ Vcc  pin 12  ──────[ red LED or 3.3V regulator]───────
 
 - **Remove the PC-1500(A) from the CE-150 while the I2C bus is in use** (PB2 is the cassette input
   of the CE-150). Load the tape recording with the computer docked, then take it out.
-- **Supply:** the BMP280 is a 3.3 V sensor. Its supply voltage VDD is 1.71–3.6 V. Power the module 
-  from the PC-1500) via a 3.3V rwgulator or a regulator module, or via a red LED (the forward voltage
-  drop of a red LED is approx. 1.7-2 V, which lowers the supply voltage to a level the BMP280 accepts).
-  A regulator is the safer solution, but the LED also works.
+- **Supply:** the BMP280 is a 3.3 V sensor. It draws little current, approx. 0.2 mA. Its supply
+  voltage is 1.7–3.6 V. Therefore it cannot be powered directly from the 4.7 V Vcc output of
+  the PC-1500. A 3.3 V regulator (or a regulator module) is needed, or, more simply, you can use
+  a red LED (the forward voltage drop of a red LED is approx. 1.7–2 V, which lowers the supply
+  voltage to a level the BMP280 accepts).   A regulator is the safer solution, but the LED also works.
 - join the grounds.
 - **SCL:** the diode lets the PC-1500 only pull SCL low; the pull-up of the module makes the high
   level, so the sensor never sees the 5 V of the PC7 output.
