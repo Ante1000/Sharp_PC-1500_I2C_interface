@@ -55,8 +55,8 @@ every other I2C device (see [Connection in the README](README.md#connection)):
 |---|---|---|---|
 | PC7 | 10 | Schottky diode, **cathode (stripe) toward PC7** | SCL (SCK) |
 | PB2 (CMT IN) | 27 | 470 Ω resistor | SDA (SDI) |
-| GND | 52–55 | | GND |
-| Vcc | 11–12 | 3.3V regulator or red LED | VCC (3V)
+| GND | 52–55 | (directly) | GND |
+| Vcc | 11–12 | 3.3V regulator or red LED forward direction | VCC (3V)
 
 ```
 PC-1500 (60-pin)                                         BMP280 module
