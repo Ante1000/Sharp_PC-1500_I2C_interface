@@ -5,8 +5,8 @@
 </p>
 
 A BASIC program for the PC-1500(A) that reads a **Bosch BMP280** pressure and temperature sensor
-over the [I2C interface](README.md) (SCL on PC7, SDA on PB2) and shows the results on the display,
-first the temperature and then the pressure:
+over the [I2C interface](README.md) and shows the results on the display, first the temperature 
+and then the pressure:
 
 ```
 Temperature = 25.08 C
