@@ -40,8 +40,9 @@ sensor's IIR filter, so you can choose between fast, low-noise and "weather stat
   fit into a PC-1500 with only 2 KB),
 - the **I2C interface v1.4** in the computer's memory, see
   [Installation in the README](README.md#installation) or the [QUICK_START.md](QUICK_START.md),
-- a **BMP280 module** with an I2C interface (not SPI),
+- a **BMP280 module** with an I2C interface (or I2C + SPI),
 - one **Schottky diode** (BAT43, BAT85, 1N5817; 1N4148 also works), one **470 Ω resistor**, wires,
+- if the module is a bare BMP280 without a voltage regulator, then you need a 3.3 V regulator or a red LED, as a voltage dropper,
 - a way to play the tape recording into the computer (audio output of a PC or player to the EAR
   jack of the CE-150), or patience to type the program in.
 
@@ -55,44 +56,50 @@ every other I2C device (see [Connection in the README](README.md#connection)):
 | PC7 | 10 | Schottky diode, **cathode (stripe) toward PC7** | SCL (SCK) |
 | PB2 (CMT IN) | 27 | 470 Ω resistor | SDA (SDI) |
 | GND | 52–55 | | GND |
+| Vcc | 11–12 | 3.3V regulator or red LED | VCC (3V)
 
 ```
 PC-1500 (60-pin)                                         BMP280 module
             Schottky diode
-PC7  pin 10  ────────|<|──────────┬───────────────────  SCL
+PC7  pin 10  ────────|<|──────────┬─────────────────────  SCL
             (stripe toward PC7)   |
                                  4.7k   (only if the module has no pull-up)
                                   |
                                  VCC
-PB2  pin 27  ─────────[ 470 ohm]──┬───────────────────  SDA
+PB2  pin 27  ─────────[ 470 ohm]──┬─────────────────────  SDA
                                   |
                                  4.7k   (only if the module has no pull-up)
                                   |
                                  VCC
 GND  pin 55  ───────────────────────────────────────────  GND
-                                                         VCC  ← own supply of the module
-                                                         CSB  ← VCC (selects I2C)
-                                                         SDO  ← VCC: address &77 / GND: address &76
+                                                       
+Vcc  pin 12  ──────[ red LED or 3.3V regulator]─────────  VCC 3V
+                                                          VCC  ← own supply of the module
+                                                          CSB  ← VCC (selects I2C)
+                                                          SDO  ← VCC: selects address &77 
+
 ```
 
 - **Remove the PC-1500(A) from the CE-150 while the I2C bus is in use** (PB2 is the cassette input
   of the CE-150). Load the tape recording with the computer docked, then take it out.
-- **Supply:** the BMP280 is a 3.3 V sensor. Its supply voltage VDD is 1.71–3.6 V and the supply of
-  its interface VDDIO is 1.2–3.6 V; the absolute maximum at the interface pins is **VDDIO + 0.3 V**.
-  Power the module from its own 3.3 V supply (not from the PC-1500) and join the grounds.
+- **Supply:** the BMP280 is a 3.3 V sensor. Its supply voltage VDD is 1.71–3.6 V. Power the module 
+  from the PC-1500) via a 3.3V rwgulator or a regulator module, or via a red LED (the forward voltage
+  drop of a red LED is approx. 1.7-2 V, which lowers the supply voltage to a level the BMP280 accepts).
+  A regulator is the safer solution, but the LED also works.
+- join the grounds.
 - **SCL:** the diode lets the PC-1500 only pull SCL low; the pull-up of the module makes the high
   level, so the sensor never sees the 5 V of the PC7 output.
 - **SDA:** the 470 Ω resistor limits the current. The PC-1500 reads about 2.4 V or more as a high
   level, so the 3.3 V of the module is enough. For the short high pulses that PB2 may produce, see
   [How it works in the README](README.md#how-it-works). For a permanent installation a BSS138
   bidirectional level converter on SDA removes the question.
-- **Pull-ups:** 4.7–10 kΩ to the supply of the module, only if the module has none (most modules
-  have them on board; then add nothing).
-- **CSB and SDO:** CSB must be at VDDIO, otherwise the sensor switches to SPI and ignores I2C.
-  SDO sets the last bit of the address and must not float: **SDO to VDDIO = address &77** (what
-  the program uses), SDO to GND = &76. Most modules have both pins wired already.
-- **Bus scan:** with the installer still in memory, `RUN 500` lists all devices that answer;
-  the BMP280 must appear as `&77` (or `&76`).
+- **Pull-ups, if not in the BMP280 moduke:** 4.7–10 kΩ to the supply of the module, only if the
+  module has none (most modules have them on board; then add nothing).
+- **CSB and SDO:** CSB must be at VDDIO to enable the I2C mode. SDO sets the last bit of the address
+  and must not float: **SDO to VDDIO = address &77** (what the program uses). Most modules have both
+  pins wired already.
+- **Bus scan:** with the I2C installer still in memory, `RUN 500` lists all devices that answer;
+  the BMP280 must appear as `&77`.
 
 ## 3. Loading and starting
 
@@ -101,8 +108,7 @@ GND  pin 55  ──────────────────────�
    stays in memory. Other RAM configurations use another `NEW` value, see
    [Memory in the README](README.md#memory).
 2. Dock the computer in the CE-150. In **PRO** mode type `CLOAD` [ENTER] (do **not** type `NEW0`
-   first: that would remove the I2C code) and play `wav/bmp280_v1.3.wav` (name `BMP280`). Or type
-   in [`Basic/pc1500_bmp280-v1.3.txt`](Basic/pc1500_bmp280-v1.3.txt).
+   first: that would remove the I2C code) and play `wav/bmp280_v1.3.wav`.
 3. Take the computer out of the CE-150 and connect the sensor (section 2).
 4. Switch to **RUN** mode and type `RUN` [ENTER].
 
@@ -119,11 +125,11 @@ GND  pin 55  ──────────────────────�
    | `Pres oversampling ? ` | oversampling of the pressure measurement |
    | `IR Filtering ? ` | coefficient of the IIR filter (1 = filter off) |
 
-   Answer **1, 2, 4, 8 or 16**; [ENTER] alone means 1. Any other answer (for example 0 or 3) is
-   asked again.
-3. **Measurement loop.** The program measures once, shows `Temperature = nn.nn C` for 2 seconds,
+Enter 1, 2, 4, 8, or 16. Pressing [ENTER] without entering a value selects the default (1). Any other input (e.g. 0 or 3) will prompt you to try again.
+You can also simply press [ENTER] to accept the default options. See next paragraph.
+4. **Measurement loop.** The program measures once, shows `Temperature = nn.nn C` for 2 seconds,
    then `Pressure = nnnn.nn hPa` for 2 seconds, and measures again.
-4. **Stopping.** A key that is pressed when the cycle ends stops the program with `STOPPED`; the
+5. **Stopping.** A key that is pressed when the cycle ends stops the program with `STOPPED`; the
    BREAK key also stops it at any time.
 
 ## 5. Choosing the settings
